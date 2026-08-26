@@ -45,7 +45,8 @@ h1{font-size:21px;font-weight:600;letter-spacing:-.01em;margin:0 0 7px;
 section{background:var(--card);border:1px solid var(--ln);border-radius:12px;
         padding:20px 22px;margin-bottom:15px}
 h2{font-size:13px;font-weight:600;color:var(--g);margin:0 0 15px;letter-spacing:.01em}
-.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:13px}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:13px;
+   align-items:end}   /* 머리글 줄 수가 달라도 입력칸 바닥은 나란히 */
 label{display:block;font-size:12.5px;color:var(--ink-2);margin-bottom:5px}
 input,select{width:100%;height:38px;padding:0 11px;border:1px solid var(--ln);
              border-radius:var(--radius);font:15px var(--font);
@@ -75,7 +76,7 @@ details>summary::-webkit-details-marker{display:none}
 details>summary::before{content:"▸  ";color:var(--ln-2)}
 details[open]>summary::before{content:"▾  "}
 details>.body{padding:0 22px 20px}
-canvas{max-width:100%;display:block}
+canvas{max-width:100%;height:auto;display:block}
 #pv{border:1px solid var(--ln);border-radius:var(--radius)}
 .slot{border:1px solid var(--ln);border-radius:var(--radius);padding:14px;margin-bottom:11px}
 .slot.on{border-color:var(--g);box-shadow:0 0 0 3px var(--g-tint)}
@@ -88,6 +89,8 @@ canvas{max-width:100%;display:block}
 .mini{height:32px;padding:0 12px;font-size:12.5px}
 .fh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px;min-height:19px}
 .fh>label{margin:0}
+/* 라벨과 같은 줄에 두면 글자가 밀려 접히므로, 알약만 한 줄 위에 따로 놓습니다 */
+.fh.acts{justify-content:flex-end;gap:5px;margin-bottom:4px;min-height:22px}
 .pin{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--mu);
      cursor:pointer;padding:2px 9px;border:1px solid var(--ln);border-radius:11px;background:#fff;
      user-select:none;transition:background .12s,border-color .12s,color .12s;white-space:nowrap}
@@ -100,6 +103,25 @@ button.pin{height:auto;line-height:1.25;font-family:var(--font)}
 button.pin:hover{background:var(--g-tint);border-color:var(--g-line)}
 button.pin.on:hover{background:#DCEEE8}
 button.pin:disabled{opacity:.5;cursor:default}
+/* 단계 안내 — 끝난 버튼은 초록으로 잠기고, 다음에 누를 버튼이 도드라집니다 */
+button.done{background:var(--g-tint);border-color:var(--g-line);color:#00614F;font-weight:500}
+button.done:hover{background:#DCEEE8;border-color:var(--g)}
+button.done .chk{margin-right:6px;font-weight:600}
+button.p2{background:#fff;border-color:var(--g-line);color:#00705F;font-weight:500}
+button.p2:hover{background:var(--g-tint);border-color:var(--g)}
+button .arw{margin-left:7px}
+button.p.next{animation:nudge 1.9s ease-out 3}   /* 세 번만 — 계속 뛰면 피곤합니다 */
+@keyframes nudge{
+  0%  {box-shadow:0 0 0 0  rgba(0,145,120,.42)}
+  70% {box-shadow:0 0 0 10px rgba(0,145,120,0)}
+  100%{box-shadow:0 0 0 0  rgba(0,145,120,0)}
+}
+@media (prefers-reduced-motion:reduce){button.p.next{animation:none}}
+.cue{display:none;align-items:center;align-self:center;font-size:12.5px;
+     padding:3px 10px;border-radius:11px;background:var(--g-tint);
+     border:1px solid var(--g-line);color:#00614F}
+.cue.on{display:inline-flex}
+.cue.wait{background:#FFF8E8;border-color:#EBD69C;color:#8A6410}
 button.pin.err{background:var(--r-tint);border-color:#F0B6B4;color:#A62420}
 button.pin.err i{background:var(--r)}
 .ov{position:fixed;inset:0;background:rgba(16,26,22,.5);display:none;
@@ -198,7 +220,8 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 <label class="ck"><input id="rt" type="checkbox" checked> 왕복</label>
 <div class="row">
 <button id="chkaddr">주소 확인</button>
-<button class="p" id="omap">지도에서 경로확인하기 (증빙)</button>
+<button class="p2" id="omap">지도에서 경로확인하기 (증빙)</button>
+<span class="cue" id="nextcue"></span>
 </div>
 <div id="addrbox" class="addrbox"></div>
 <p class="note" id="hint1">지도에서 경로를 조회해 <b>화면을 캡처</b>하고, 거리는 편도로 입력하면 왕복까지 계산됩니다.</p>
@@ -212,18 +235,19 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 <div><label for="oil">유종</label><select id="oil"><option>휘발유</option><option>경유</option><option>LPG</option></select></div>
 <div><label for="km">주행거리 (km)</label><input id="km" type="number" step="0.1" min="0" placeholder="156.8"></div>
 <div>
-<div class="fh" style="gap:5px"><label for="price">유가 (원/L)</label>
+<div class="fh acts">
 <button type="button" class="pin" id="getoil"><i></i>조회</button>
 <button type="button" class="pin" id="oilshot"><i></i>증빙</button></div>
+<label for="price">유가 (원/L)</label>
 <input id="price" type="number" step="1" min="0" placeholder="1652"></div>
-<div><label for="dur">소요시간</label><input id="dur" type="text" placeholder="1시간 22분"></div>
 <div>
-<div class="fh"><label for="toll">통행료 (원)</label>
+<div class="fh acts">
 <button type="button" class="pin" id="tollshot"><i></i>증빙</button></div>
+<label for="toll">통행료 (원)</label>
 <input id="toll" type="number" step="10" min="0" value="0"></div>
 <div><label for="park">주차료 (원)</label><input id="park" type="number" step="10" min="0" value="0"></div>
 </div>
-<p class="note" id="hint2">유가 옆 <b>조회</b>를 누르면 <b>출장일자</b>와 <b>유종</b> 기준 오피넷 전국 평균 유가를 가져옵니다.</p>
+<p class="note" id="hint2">유가 칸 위의 <b>조회</b>를 누르면 <b>출장일자</b>와 <b>유종</b> 기준 오피넷 전국 평균 유가를 가져옵니다.</p>
 <p class="note" id="stat2"></p>
 <p class="note">조회가 안 되면 지도·오피넷에서 확인한 값을 직접 넣으셔도 됩니다.</p>
 </section>
@@ -363,7 +387,7 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 <div class="g" style="margin-top:8px">
 <div><label for="ovprice">유가 (원/L)</label><input id="ovprice" type="number" step="1" min="0" placeholder="1698"></div>
 </div>
-<p class="note">이미 자동 조회로 채워져 있으면 비워 두셔도 됩니다. 캡처만 반영됩니다.</p>
+<p class="note" id="ovoilnote">표에서 출장일 · 유종에 해당하는 값을 넣으세요.</p>
 </div>
 
 </div>
@@ -503,7 +527,11 @@ function setImg(k,src){
 }
 SLOTS.forEach(function(k){
   var cv=$("c_"+k), drag=false, x0=0, y0=0;
-  function at(e){var r=cv.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top};}
+  function at(e){
+    var r=cv.getBoundingClientRect();
+    var k=r.width ? (cv._w||r.width)/r.width : 1;   // 축소 표시된 만큼 환산
+    return {x:(e.clientX-r.left)*k, y:(e.clientY-r.top)*k};
+  }
   cv.addEventListener("mousedown",function(e){drag=true; var p=at(e); x0=p.x; y0=p.y; SHOT[k].sel=null; e.preventDefault();});
   cv.addEventListener("mousemove",function(e){
     if(!drag)return;
@@ -657,7 +685,11 @@ function routeLines(){
 function hidpi(cv,w,h){
   var S=Math.max(2, Math.min(3, Math.ceil(window.devicePixelRatio||1)));
   cv.width=Math.round(w*S); cv.height=Math.round(h*S);
-  cv.style.width=w+"px"; cv.style.height=h+"px";
+  // 좁은 화면에서는 CSS max-width:100% 가 '폭만' 줄입니다.
+  // 높이를 px 로 못박아 두면 가로만 눌려 글씨가 뭉개지므로 height 는 auto 로 둡니다.
+  cv.style.width=w+"px"; cv.style.height="auto";
+  cv.style.aspectRatio=w+" / "+h;
+  cv._w=w; cv._h=h;               // 포인터 좌표를 되돌릴 때 쓰는 논리 크기
   var x=cv.getContext("2d");
   x.setTransform(S,0,0,S,0,0);
   return x;
@@ -702,8 +734,8 @@ function drawPage1(cv){
     x.fillStyle=G; x.fillRect(M,y-pt(9),pt(2.4),행*rl.length);
     rl.forEach(function(l){ T(l,M+pt(12),y,pt(PT.body)); y+=행; });
   }else{ T("— 미입력 —",M+pt(12),y,pt(PT.body),false,"#95A09B"); y+=행; }
-  T(($("rt").checked?"왕복":"편도")+" · 총 "+s.km.toFixed(1)+" km"
-    +($("dur").value?" · 소요 "+$("dur").value:""),M+pt(12),y,pt(PT.label),false,"#7E8A85");
+  T(($("rt").checked?"왕복":"편도")+" · 총 "+s.km.toFixed(1)+" km",
+    M+pt(12),y,pt(PT.label),false,"#7E8A85");
   y+=절;
 
   T("산출 내역",M,y,pt(PT.h2),true,G); y+=행;
@@ -1035,6 +1067,8 @@ $("chkaddr").addEventListener("click",function(){
   var items=주소항목();
   if(!items.length){ alert("주소를 먼저 입력하세요."); return; }
   $("chkaddr").disabled=true;
+  $("chkaddr").className=""; $("chkaddr").textContent="확인 중…";
+  경로단계=null;
   $("addrbox").className="addrbox on";
   $("addrbox").innerHTML='<div class="arow">주소를 확인하는 중…</div>';
 
@@ -1048,7 +1082,7 @@ $("chkaddr").addEventListener("click",function(){
       return it;
     });
     renderAddr();
-  })["finally"](function(){ $("chkaddr").disabled=false; });
+  })["finally"](function(){ $("chkaddr").disabled=false; 경로단계갱신(true); });
 });
 
 function renderAddr(){
@@ -1115,6 +1149,8 @@ function renderAddr(){
       renderAddr();
     });
   });
+
+  경로단계갱신();
 }
 
 // 확인이 끝났으면 그 좌표를, 아니면 즉석 조회 결과를 씁니다
@@ -1127,6 +1163,50 @@ function 확정좌표(){
   }
   return ADDR.map(function(a){ return a.pick; });
 }
+
+/* ---------- 경로 단계 표시 ---------- */
+// 주소 확인이 어디까지 됐는지 버튼 모양으로 알려주고, 다음에 누를 곳을 가리킵니다.
+var 경로단계=null, 지도열어봤다=false;
+
+function 경로상태(){
+  if(확정좌표())return "확정";
+  if(!ADDR.length)return "처음";
+  var items=주소항목();
+  if(items.length!==ADDR.length)return "바뀜";
+  for(var i=0;i<items.length;i++) if(items[i].raw!==ADDR[i].raw)return "바뀜";
+  var 못찾음=false;
+  ADDR.forEach(function(a){ if(a.err||!a.cands||!a.cands.length)못찾음=true; });
+  return 못찾음 ? "못찾음" : "고르는중";
+}
+
+function 경로단계갱신(강제){
+  var 상태=경로상태();
+  if(!강제 && 상태===경로단계)return;      // 같은 상태면 그대로 (물결이 다시 돌지 않게)
+  경로단계=상태;
+
+  var ok=$("chkaddr"), map=$("omap"), cue=$("nextcue");
+  if(상태==="확정"){
+    ok.className="done";
+    ok.innerHTML='<span class="chk">✓</span>주소 확인됨';
+    map.className="p"+(지도열어봤다?"":" next");
+    map.innerHTML='지도에서 경로확인하기 (증빙)<span class="arw">→</span>';
+    cue.className="cue on";
+    cue.textContent="주소가 정해졌습니다 · 다음은 지도에서 경로 확인";
+    return;
+  }
+
+  ok.className=""; ok.textContent="주소 확인";
+  map.className="p2"; map.innerHTML="지도에서 경로확인하기 (증빙)";
+  if(상태==="처음"){ cue.className="cue"; cue.textContent=""; return; }
+  cue.className="cue on wait";
+  cue.textContent = 상태==="고르는중" ? "아래에서 주소를 골라 주세요"
+                  : 상태==="못찾음"   ? "찾지 못한 주소가 있습니다 · 도로명으로 다시 넣어 보세요"
+                  :                     "주소가 바뀌었습니다 · 다시 확인해 주세요";
+}
+
+["from","via","to"].forEach(function(id){
+  $(id).addEventListener("input",function(){ 경로단계갱신(); });
+});
 
 /* ---------- 유가 조회 ---------- */
 var OIL_OK=null;   // 마지막으로 조회에 성공한 {날짜, 유종}
@@ -1153,7 +1233,7 @@ $("getoil").addEventListener("click",function(){
 
   lookupOil(d,f).then(function(v){
     $("price").value=Math.round(v.price);
-    OIL_OK={d:d,f:f};
+    OIL_OK={d:d,f:f,price:Math.round(v.price)};
     SRC.oil="유가: 한국석유공사 오피넷 전국 평균판매가격 ("+v.date+" 기준)";
     oilPill("on","조회됨");
     $("stat2").textContent=f+" "+KO(Math.round(v.price))+" 원/L  ·  "+v.date+" 전국 평균  ·  출처 오피넷";
@@ -1441,7 +1521,11 @@ function ovFillOil(){
   var 현재=$("price").value;
   if(현재)줄("현재 입력값", KO(Math.round(Number(현재)))+" 원/L", false);
   $("ovs1sub").textContent="조회화면이 이 기간으로 바로 열립니다";
-  $("ovprice").value="";
+  // 이미 조회·입력해 둔 값이 있으면 4단계에 미리 넣어 둡니다
+  $("ovprice").value = 현재 ? String(Math.round(Number(현재))) : "";
+  $("ovoilnote").textContent = 현재
+    ? "현재 값이 미리 들어 있습니다. 오피넷 표와 다르면 고치고, 같으면 그대로 두세요."
+    : "표에서 출장일 · 유종에 해당하는 값을 넣으세요. 비워 두면 캡처만 반영됩니다.";
   버튼("조회화면 바로 열기", true, opinetOpen);
   버튼("오피넷 메인", false, function(){
     ovWin("https://www.opinet.co.kr/user/main/mainView.do","오피넷 메인 화면을 열었습니다.");
@@ -1533,7 +1617,11 @@ function capPaint(){
 }
 function bindCapDrag(){
   var cv=$("ovcv"), drag=false, x0=0, y0=0;
-  function at(e){var r=cv.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top};}
+  function at(e){
+    var r=cv.getBoundingClientRect();
+    var k=r.width ? (cv._w||r.width)/r.width : 1;   // 축소 표시된 만큼 환산
+    return {x:(e.clientX-r.left)*k, y:(e.clientY-r.top)*k};
+  }
   cv.addEventListener("mousedown",function(e){drag=true; var p=at(e); x0=p.x; y0=p.y; CAPSEL=null; e.preventDefault();});
   cv.addEventListener("mousemove",function(e){
     if(!drag)return; var p=at(e);
@@ -1598,9 +1686,14 @@ $("ovuse").addEventListener("click",function(){
   }else{
     var pr=parseFloat($("ovprice").value);
     if(pr>0){
+      // 미리 채워 둔 조회값을 그대로 반영하는 경우엔 출처를 '오피넷 API' 로 유지합니다
+      var 그대로 = OIL_OK && OIL_OK.price===Math.round(pr)
+                && OIL_OK.d===$("date").value && OIL_OK.f===$("oil").value;
       $("price").value=Math.round(pr);
-      OIL_OK=null; oilPillSync();
-      SRC.oil="유가: 오피넷 화면 직접 확인 ("+($("date").value||"")+" 기준)";
+      if(!그대로){
+        OIL_OK=null; oilPillSync();
+        SRC.oil="유가: 오피넷 화면 직접 확인 ("+($("date").value||"")+" 기준)";
+      }
       적용.push("유가 "+KO(Math.round(pr))+"원/L");
     }
   }
@@ -1621,6 +1714,7 @@ $("ov").addEventListener("click",function(e){ if(e.target===$("ov"))ovClose(); }
 document.addEventListener("keydown",function(e){ if(e.key==="Escape")ovClose(); });
 
 $("omap").addEventListener("click",function(){
+  지도열어봤다=true; 경로단계갱신(true);      // 한 번 열었으면 물결은 거둡니다
   var a=addrs();
   if(a.length && navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(a.join("\n"))["catch"](function(){});
@@ -1686,17 +1780,18 @@ $("smp").addEventListener("click",function(){
   $("purp").value="화성 현장 공정 점검 및 시행사 협의";
   $("from").value="서울 강남구 테헤란로 127"; $("via").value="경기 화성시 동탄역로 160";
   $("to").value="경기 화성시 향남읍 발안로 1"; $("rt").checked=true;
-  $("km").value="156.8"; $("price").value="1652"; $("dur").value="1시간 22분";
+  $("km").value="156.8"; $("price").value="1652";
   $("toll").value="9600"; $("park").value="3000";
   $("help").style.display="none";
   $("stat").textContent="서식을 미리 보기 위한 샘플입니다. 거리·통행료·유가는 예시 숫자이니 "
     +"실제로 쓰실 때는 조회한 값으로 바꾸세요.";
+  경로단계갱신();
   draw();
 });
 $("clr").addEventListener("click",function(){
   // 고정된 항목은 건드리지 않습니다
   ["name","dept","purp","from"].forEach(function(i){ if(!pinOn(i))$(i).value=""; });
-  ["via","to","km","price","dur"].forEach(function(i){ $(i).value=""; });
+  ["via","to","km","price"].forEach(function(i){ $(i).value=""; });
   if(!pinOn("date"))$("date").value=new Date().toISOString().slice(0,10);
   $("toll").value="0"; $("park").value="0";
   SHOT.map={full:null,use:null,sel:null,sc:1};
@@ -1705,6 +1800,9 @@ $("clr").addEventListener("click",function(){
   refreshSlot("map"); refreshSlot("oil");
   $("help").style.display="none";
   $("stat").textContent="";
+  ADDR=[]; 지도열어봤다=false;                 // 주소 확인 결과도 같이 비웁니다
+  $("addrbox").className="addrbox"; $("addrbox").innerHTML="";
+  경로단계갱신(true);
   draw();
 });
 
@@ -1725,6 +1823,7 @@ $("iszv").textContent="100%";
 $("date").value=new Date().toISOString().slice(0,10);
 pinInit();
 oilPillSync();
+경로단계갱신(true);
 focusSlot("map");
 setMode();
 draw();
