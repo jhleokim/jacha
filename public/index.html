@@ -404,7 +404,7 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 <script src="config.js" onerror="void 0"></script>
 <script>
 "use strict";
-var VERSION="v4.3";
+var VERSION="v4.4";
 var G="#009178", G_DK="#00705F", R="#DC231E",
     // 증빙 서식(캔버스)은 결재 문서 관행에 맞춰 맑은 고딕으로 고정합니다.
     FONT='"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif';
@@ -834,7 +834,7 @@ function jget(u,sec){
   return fetch(u,{cache:"no-store", signal:ac?ac.signal:undefined})
     .then(function(r){
       if(r.status===401||r.status===403)throw new Error("권한 오류 ("+r.status+") · 키 또는 사용 승인을 확인하세요");
-      if(r.status===404)throw new Error("서버에 프록시 설정이 없습니다 (404) · nginx 설정을 확인하세요");
+      if(r.status===404)throw new Error("서버에 이 요청을 처리할 경로가 없습니다 (404) · worker.js 배포 상태를 확인하세요");
       if(!r.ok)throw new Error("HTTP "+r.status);
       return r.text();
     })
@@ -967,13 +967,16 @@ function showHelp(what){
   $("help").innerHTML =
     '<div style="font-size:13px;font-weight:600;margin-bottom:8px">'+(what||"자동")+' 조회가 아직 켜져 있지 않습니다</div>'
   + '<p class="note" style="margin-top:0">브라우저는 보안 규칙 때문에 카카오·오피넷에 직접 물어볼 수 없습니다. '
-  + '웹서버(nginx)가 대신 물어보도록 설정해야 켜집니다.</p>'
+  + 'Cloudflare Worker가 대신 물어보도록 키가 등록되어야 켜집니다.</p>'
   + '<ol style="font-size:12.5px;color:#4b5563;line-height:1.9;margin:8px 0 0;padding-left:20px">'
-  + '<li>카카오 <b>REST API 키</b>를 받습니다 (승인 불필요, 20분)</li>'
-  + '<li><code>nginx_예시.conf</code> 에 키를 넣고 nginx 에 적용합니다</li>'
-  + '<li><code>config.js</code> 에서 <code>route: true, oil: true</code> 로 바꿉니다</li>'
+  + '<li>카카오 <b>REST API 키</b>와 오피넷 키를 받습니다 (승인 불필요, 즉시)</li>'
+  + '<li>대시보드 <b>Settings → Variables and Secrets</b> 에서 '
+  +   '<code>KAKAO_REST_KEY</code>, <code>OPINET_KEY</code> 를 <b>Secret</b> 으로 등록합니다</li>'
+  + '<li>등록 후 <b>재배포</b>합니다 (커밋을 하나 올리거나, Deployments 에서 재시도)</li>'
   + '</ol>'
-  + '<p class="note">자세한 내용은 <b>웹배포_안내.md</b> 와 <b>API키_요청서.md</b> 를 보세요.</p>'
+  + '<p class="note">자세한 내용은 <b>카카오키_받기.md</b> 와 <b>올리기.md</b> 를 보세요.</p>'
+  + '<p class="note">키를 이미 등록했는데도 이 안내가 보이면, 등록 후 재배포가 안 된 상태일 수 있습니다. '
+  + '대시보드에서 최신 배포 시각을 확인해 주세요.</p>'
   + '<p class="note">그때까지는 아래 <b>수동 절차</b>로 쓰시면 됩니다.</p>';
 }
 
