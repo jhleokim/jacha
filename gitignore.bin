@@ -1,0 +1,27 @@
+# 의존성
+node_modules/
+
+# wrangler 작업 파일
+.wrangler/
+.dev.vars
+.dev.vars.*
+
+# 환경변수 · 비밀값 (실수로라도 올라가면 안 됩니다)
+.env
+.env.*
+*.key
+secrets.json
+
+# 편집기
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 로그
+*.log
+npm-debug.log*
