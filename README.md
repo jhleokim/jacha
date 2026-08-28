@@ -16,10 +16,11 @@ Cloudflare Workers 위에서 동작합니다.
 
 ```
 wrangler.toml        배포 설정
-worker.js            API 중계 (카카오 · 오피넷)
+worker.js            API 중계 (카카오 · 오피넷 · 영수증 릴레이)
 public/
   index.html         화면 전체
   config.js          정산 기준값
+  qr.js              QR 생성 라이브러리 (MIT · 수정하지 마세요)
 ```
 
 ## API 키
