@@ -5,7 +5,10 @@ compatibility_date = "2026-08-20"
 [assets]
 directory = "./public"
 binding = "ASSETS"
-not_found_handling = "single-page-application"
+# API 경로만 Worker 가 먼저 처리합니다.
+# not_found_handling = "single-page-application" 은 쓰지 않습니다 —
+# 매칭 안 된 모든 경로를 index.html 로 돌려버려서 API 가 Worker 에 도달하지 못합니다(v4.5).
+run_worker_first = ["/kakao/*", "/navi/*", "/opinet/*", "/tmap/*", "/receipt/*"]
 
 [observability]
 enabled = true
