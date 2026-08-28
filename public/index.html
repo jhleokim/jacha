@@ -86,6 +86,12 @@ canvas{max-width:100%;height:auto;display:block}
       text-align:center;font-size:12.5px;color:var(--mu);cursor:pointer;background:#FAFCFB}
 .drop:hover{background:var(--g-tint);border-color:var(--g)}
 .slot canvas{cursor:crosshair;border:1px solid var(--ln);border-radius:var(--radius)}
+/* 여러 장 넣는 칸(통행료·주차료)에서 한 장씩 담는 카드 */
+.shotcard{border:1px solid var(--ln);border-radius:var(--radius);padding:12px;margin-top:10px;background:#fff}
+.shotcard>.ch{display:flex;justify-content:space-between;align-items:center;gap:8px;
+              margin-bottom:9px;font-size:12px;color:var(--ink-2)}
+.shotcard>.ch b{font-weight:600;color:var(--ink)}
+.shotcard>.ch .sz{color:var(--mu);font-weight:400}
 .mini{height:32px;padding:0 12px;font-size:12.5px}
 .fh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:5px;min-height:19px}
 .fh>label{margin:0}
@@ -315,85 +321,28 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 <h3>경로 캡처 <span id="t_map">비어 있음</span></h3>
 <div class="drop" id="d_map">클릭 후 <b>Ctrl+V</b> · 또는 아래에서 파일 선택</div>
 <input type="file" accept="image/*" id="f_map" style="margin-top:7px">
-<div id="e_map" style="display:none">
-<canvas id="c_map"></canvas>
-<div class="row" style="margin-top:9px">
-<button class="mini" data-mode="map" data-m="crop">자르기</button>
-<button class="mini" data-mode="map" data-m="hl">강조</button>
-<button class="mini" data-crop="map">선택 영역만 남기기</button>
-<button class="mini" data-hlclear="map">강조 지우기</button>
-<button class="mini" data-undo="map">원본으로</button>
-<button class="mini" data-del="map">삭제</button>
-</div>
-<label style="display:flex;align-items:center;gap:9px;margin:11px 0 0;font-size:12px;color:var(--ink-2)">
-이 이미지 크기
-<input id="z_map" type="range" min="40" max="100" step="5" value="100" style="width:130px;height:auto;padding:0">
-<b id="zv_map" style="font-weight:500;min-width:38px">100%</b></label>
-<p class="note">이미지 위를 드래그해 남길 부분을 지정하세요. 사이드바나 검색 기록이 찍혔다면 잘라내면 됩니다.</p>
-</div>
+<div id="e_map"></div>
 </div>
 
 <div class="slot" id="s_toll">
 <h3>통행료 캡처 <span id="t_toll">비어 있음</span></h3>
-<div class="drop" id="d_toll">클릭 후 <b>Ctrl+V</b> · 또는 아래에서 파일 선택</div>
-<input type="file" accept="image/*" id="f_toll" style="margin-top:7px">
-<div id="e_toll" style="display:none">
-<canvas id="c_toll"></canvas>
-<div class="row" style="margin-top:9px">
-<button class="mini" data-mode="toll" data-m="crop">자르기</button>
-<button class="mini" data-mode="toll" data-m="hl">강조</button>
-<button class="mini" data-crop="toll">선택 영역만 남기기</button>
-<button class="mini" data-hlclear="toll">강조 지우기</button>
-<button class="mini" data-undo="toll">원본으로</button>
-<button class="mini" data-del="toll">삭제</button>
-</div>
-<label style="display:flex;align-items:center;gap:9px;margin:11px 0 0;font-size:12px;color:var(--ink-2)">
-이 이미지 크기
-<input id="z_toll" type="range" min="40" max="100" step="5" value="100" style="width:130px;height:auto;padding:0">
-<b id="zv_toll" style="font-weight:500;min-width:38px">100%</b></label>
-</div>
+<div class="drop" id="d_toll">클릭 후 <b>Ctrl+V</b> · 또는 아래에서 파일 선택 <b>(여러 장 가능)</b></div>
+<input type="file" accept="image/*" id="f_toll" multiple style="margin-top:7px">
+<div id="e_toll"></div>
 </div>
 
 <div class="slot" id="s_park">
 <h3>주차료 캡처 <span id="t_park">비어 있음</span></h3>
-<div class="drop" id="d_park">클릭 후 <b>Ctrl+V</b> · 또는 아래에서 파일 선택</div>
-<input type="file" accept="image/*" id="f_park" style="margin-top:7px">
-<div id="e_park" style="display:none">
-<canvas id="c_park"></canvas>
-<div class="row" style="margin-top:9px">
-<button class="mini" data-mode="park" data-m="crop">자르기</button>
-<button class="mini" data-mode="park" data-m="hl">강조</button>
-<button class="mini" data-crop="park">선택 영역만 남기기</button>
-<button class="mini" data-hlclear="park">강조 지우기</button>
-<button class="mini" data-undo="park">원본으로</button>
-<button class="mini" data-del="park">삭제</button>
-</div>
-<label style="display:flex;align-items:center;gap:9px;margin:11px 0 0;font-size:12px;color:var(--ink-2)">
-이 이미지 크기
-<input id="z_park" type="range" min="40" max="100" step="5" value="100" style="width:130px;height:auto;padding:0">
-<b id="zv_park" style="font-weight:500;min-width:38px">100%</b></label>
-</div>
+<div class="drop" id="d_park">클릭 후 <b>Ctrl+V</b> · 또는 아래에서 파일 선택 <b>(여러 장 가능)</b></div>
+<input type="file" accept="image/*" id="f_park" multiple style="margin-top:7px">
+<div id="e_park"></div>
 </div>
 
 <div class="slot" id="s_oil">
 <h3>유가 캡처 <span id="t_oil">비어 있음</span></h3>
 <div class="drop" id="d_oil">클릭 후 <b>Ctrl+V</b> · 또는 아래에서 파일 선택</div>
 <input type="file" accept="image/*" id="f_oil" style="margin-top:7px">
-<div id="e_oil" style="display:none">
-<canvas id="c_oil"></canvas>
-<div class="row" style="margin-top:9px">
-<button class="mini" data-mode="oil" data-m="crop">자르기</button>
-<button class="mini" data-mode="oil" data-m="hl">강조</button>
-<button class="mini" data-crop="oil">선택 영역만 남기기</button>
-<button class="mini" data-hlclear="oil">강조 지우기</button>
-<button class="mini" data-undo="oil">원본으로</button>
-<button class="mini" data-del="oil">삭제</button>
-</div>
-<label style="display:flex;align-items:center;gap:9px;margin:11px 0 0;font-size:12px;color:var(--ink-2)">
-이 이미지 크기
-<input id="z_oil" type="range" min="40" max="100" step="5" value="100" style="width:130px;height:auto;padding:0">
-<b id="zv_oil" style="font-weight:500;min-width:38px">100%</b></label>
-</div>
+<div id="e_oil"></div>
 </div>
 </div>
 </details>
@@ -503,7 +452,7 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 <script src="config.js" onerror="void 0"></script>
 <script>
 "use strict";
-var VERSION="v5.2";
+var VERSION="v5.3";
 var G="#009178", G_DK="#00705F", R="#DC231E",
     // 증빙 서식(캔버스)은 결재 문서 관행에 맞춰 맑은 고딕으로 고정합니다.
     FONT='"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif';
@@ -602,142 +551,199 @@ $("cp1").addEventListener("click",function(){ 복사(CPTXT.sub,"자차보조금 
 $("cp2").addEventListener("click",function(){ 복사(CPTXT.total,"청구 합계를 복사했습니다"); });
 
 /* ---------- 캡처 ---------- */
-var SHOT={map :{full:null,use:null,sel:null,sc:1,hl:[],mode:"crop",zoom:1},
-          toll:{full:null,use:null,sel:null,sc:1,hl:[],mode:"crop",zoom:1},
-          park:{full:null,use:null,sel:null,sc:1,hl:[],mode:"crop",zoom:1},
-          oil :{full:null,use:null,sel:null,sc:1,hl:[],mode:"crop",zoom:1}},
-    ACT="map", SLOTS=["map","toll","park","oil"];
+/* ---------- 증빙 캡처 ----------
+   통행료·주차료는 영수증이 여러 장일 수 있어 칸마다 사진을 목록으로 담습니다.
+   경로·유가는 조회 화면 한 장이면 충분하므로 한 장만 유지합니다(새로 넣으면 교체). */
+var SLOTS=["map","toll","park","oil"];
+var 여러장={map:false, toll:true, park:true, oil:false};
+var SHOT={map:[], toll:[], park:[], oil:[]};
+var ACT="map";
+
+function 새장(){ return {full:null,use:null,sel:null,sc:1,hl:[],mode:"crop",zoom:1,cv:null}; }
+function 장수(k){ return SHOT[k].filter(function(it){return it.use;}).length; }
+
 function focusSlot(k){
   ACT=k;
   SLOTS.forEach(function(x){$("s_"+x).className="slot"+(x===k?" on":"");});
 }
-function paint(k){
-  var s=SHOT[k], cv=$("c_"+k), w=Math.min(520,s.use.width);
-  s.sc=w/s.use.width;
-  var h=Math.round(s.use.height*s.sc);
-  var x=hidpi(cv,w,h);
-  x.drawImage(s.use,0,0,w,h);
-  // 저장된 강조 표시
-  (s.hl||[]).forEach(function(hh){
+
+/* ----- 한 장 그리기 ----- */
+function paintItem(it){
+  if(!it.use||!it.cv)return;
+  var w=Math.min(520,it.use.width);
+  it.sc=w/it.use.width;
+  var h=Math.round(it.use.height*it.sc);
+  var x=hidpi(it.cv,w,h);
+  x.drawImage(it.use,0,0,w,h);
+  (it.hl||[]).forEach(function(hh){
     x.fillStyle="rgba(220,35,30,.10)";
-    x.fillRect(hh.x*s.sc, hh.y*s.sc, hh.w*s.sc, hh.h*s.sc);
+    x.fillRect(hh.x*it.sc, hh.y*it.sc, hh.w*it.sc, hh.h*it.sc);
     x.strokeStyle=R; x.lineWidth=1.8;
-    x.strokeRect(hh.x*s.sc, hh.y*s.sc, hh.w*s.sc, hh.h*s.sc);
+    x.strokeRect(hh.x*it.sc, hh.y*it.sc, hh.w*it.sc, hh.h*it.sc);
   });
-  if(s.sel){
-    if(s.mode==="hl"){
+  if(it.sel){
+    if(it.mode==="hl"){
       x.fillStyle="rgba(220,35,30,.10)";
-      x.fillRect(s.sel.x,s.sel.y,s.sel.w,s.sel.h);
+      x.fillRect(it.sel.x,it.sel.y,it.sel.w,it.sel.h);
       x.strokeStyle=R;
     }else{
       x.fillStyle="rgba(0,0,0,.42)"; x.fillRect(0,0,w,h);
-      x.drawImage(s.use,s.sel.x/s.sc,s.sel.y/s.sc,s.sel.w/s.sc,s.sel.h/s.sc,
-                        s.sel.x,s.sel.y,s.sel.w,s.sel.h);
+      x.drawImage(it.use,it.sel.x/it.sc,it.sel.y/it.sc,it.sel.w/it.sc,it.sel.h/it.sc,
+                        it.sel.x,it.sel.y,it.sel.w,it.sel.h);
       x.strokeStyle=G;
     }
-    x.lineWidth=2; x.strokeRect(s.sel.x,s.sel.y,s.sel.w,s.sel.h);
+    x.lineWidth=2; x.strokeRect(it.sel.x,it.sel.y,it.sel.w,it.sel.h);
   }
 }
-function refreshSlot(k){
-  var s=SHOT[k];
-  $("t_"+k).textContent = s.use ? s.use.width+" x "+s.use.height+" px" : "비어 있음";
-  $("e_"+k).style.display = s.use?"block":"none";
-  $("d_"+k).style.display = s.use?"none":"block";
-  if(s.use)paint(k);
-  draw();
+
+/* ----- 칸 하나의 편집 UI 를 통째로 다시 만듭니다 ----- */
+function renderSlot(k){
+  var 목록=SHOT[k].filter(function(it){return it.use;});
+  SHOT[k]=목록;
+  var n=목록.length;
+
+  $("t_"+k).textContent = n===0 ? "비어 있음"
+    : (여러장[k] && n>1 ? n+"장" : 목록[0].use.width+" x "+목록[0].use.height+" px");
+  $("d_"+k).style.display = (여러장[k]||n===0) ? "block" : "none";
+
+  var 통=$("e_"+k);
+  통.innerHTML="";
+  목록.forEach(function(it,idx){
+    var card=document.createElement("div");
+    card.className="shotcard";
+
+    var 머리=document.createElement("div");
+    머리.className="ch";
+    머리.innerHTML='<span><b>'+(여러장[k]?(idx+1)+"번째 ":"")+'사진</b> '
+      +'<span class="sz">'+it.use.width+" x "+it.use.height+' px</span></span>';
+    card.appendChild(머리);
+
+    var cv=document.createElement("canvas");
+    cv.style.cursor = it.mode==="hl" ? "cell" : "crosshair";
+    it.cv=cv;
+    card.appendChild(cv);
+
+    var 줄=document.createElement("div");
+    줄.className="row"; 줄.style.marginTop="9px";
+    [["자르기",   function(){ it.mode="crop"; it.sel=null; renderSlot(k); }],
+     ["강조",     function(){ it.mode="hl";   it.sel=null; renderSlot(k); }],
+     ["선택 영역만 남기기", function(){
+        if(!it.sel){alert("먼저 이미지 위를 드래그해 남길 영역을 지정하세요."); return;}
+        var o=document.createElement("canvas");
+        o.width =Math.max(1,Math.round(it.sel.w/it.sc));
+        o.height=Math.max(1,Math.round(it.sel.h/it.sc));
+        o.getContext("2d").drawImage(it.use,it.sel.x/it.sc,it.sel.y/it.sc,
+                                     o.width,o.height,0,0,o.width,o.height);
+        var im=new Image();
+        im.onload=function(){ it.use=im; it.sel=null; renderSlot(k); draw(); };
+        im.src=o.toDataURL();
+      }],
+     ["강조 지우기", function(){ it.hl=[]; it.sel=null; renderSlot(k); draw(); }],
+     ["원본으로",   function(){ it.use=it.full; it.sel=null; it.hl=[]; renderSlot(k); draw(); }],
+     ["삭제",       function(){ SHOT[k].splice(idx,1); $("f_"+k).value=""; renderSlot(k); draw(); }]
+    ].forEach(function(t){
+      var b=document.createElement("button");
+      b.textContent=t[0];
+      b.className="mini"+((t[0]==="자르기"&&it.mode==="crop")||(t[0]==="강조"&&it.mode==="hl")?" pin on":"");
+      b.addEventListener("click",t[1]);
+      줄.appendChild(b);
+    });
+    card.appendChild(줄);
+
+    var 라벨=document.createElement("label");
+    라벨.style.cssText="display:flex;align-items:center;gap:9px;margin:11px 0 0;font-size:12px;color:var(--ink-2)";
+    var rg=document.createElement("input");
+    rg.type="range"; rg.min="40"; rg.max="100"; rg.step="5";
+    rg.value=String(Math.round((it.zoom==null?1:it.zoom)*100));
+    rg.style.cssText="width:130px;height:auto;padding:0";
+    var 값=document.createElement("b");
+    값.style.cssText="font-weight:500;min-width:38px";
+    값.textContent=rg.value+"%";
+    rg.addEventListener("input",function(){ it.zoom=+this.value/100; 값.textContent=this.value+"%"; draw(); });
+    라벨.appendChild(document.createTextNode("이 이미지 크기 "));
+    라벨.appendChild(rg); 라벨.appendChild(값);
+    card.appendChild(라벨);
+
+    통.appendChild(card);
+    끌기연결(k,it,cv);
+    paintItem(it);
+  });
+
+  if(k==="map" && n){
+    var 안내=document.createElement("p");
+    안내.className="note";
+    안내.textContent="이미지 위를 드래그해 남길 부분을 지정하세요. 사이드바나 검색 기록이 찍혔다면 잘라내면 됩니다.";
+    통.appendChild(안내);
+  }
 }
-function setImg(k,src){
-  var im=new Image();
-  im.onload=function(){SHOT[k].full=im; SHOT[k].use=im; SHOT[k].sel=null; SHOT[k].hl=[]; refreshSlot(k);};
-  im.src=src;
-}
-SLOTS.forEach(function(k){
-  var cv=$("c_"+k), drag=false, x0=0, y0=0;
+
+/* ----- 드래그(자르기·강조) ----- */
+function 끌기연결(k,it,cv){
+  var drag=false, x0=0, y0=0;
   function at(e){
     // 캔버스가 창 폭에 맞춰 줄어들었을 수 있으므로 논리 크기로 되돌립니다
     var r=cv.getBoundingClientRect();
     var 배율 = (r.width && cv._w) ? cv._w/r.width : 1;
     return {x:(e.clientX-r.left)*배율, y:(e.clientY-r.top)*배율};
   }
-  cv.addEventListener("mousedown",function(e){drag=true; var p=at(e); x0=p.x; y0=p.y; SHOT[k].sel=null; e.preventDefault();});
+  cv.addEventListener("mousedown",function(e){
+    focusSlot(k); drag=true; var q=at(e); x0=q.x; y0=q.y; it.sel=null; e.preventDefault();
+  });
   cv.addEventListener("mousemove",function(e){
     if(!drag)return;
-    var p=at(e);
-    SHOT[k].sel={x:Math.min(x0,p.x),y:Math.min(y0,p.y),w:Math.abs(p.x-x0),h:Math.abs(p.y-y0)};
-    paint(k);
+    var q=at(e);
+    it.sel={x:Math.min(x0,q.x),y:Math.min(y0,q.y),w:Math.abs(q.x-x0),h:Math.abs(q.y-y0)};
+    paintItem(it);
   });
   window.addEventListener("mouseup",function(){
     if(!drag)return; drag=false;
-    var s=SHOT[k];
-    if(s.sel&&(s.sel.w<8||s.sel.h<8)){ s.sel=null; paint(k); return; }
-    if(s.sel && s.mode==="hl"){          // 강조는 놓는 순간 확정
-      s.hl.push({ x:s.sel.x/s.sc, y:s.sel.y/s.sc, w:s.sel.w/s.sc, h:s.sel.h/s.sc });
-      s.sel=null; paint(k); draw();
+    if(it.sel&&(it.sel.w<8||it.sel.h<8)){ it.sel=null; paintItem(it); return; }
+    if(it.sel && it.mode==="hl"){          // 강조는 놓는 순간 확정
+      it.hl.push({ x:it.sel.x/it.sc, y:it.sel.y/it.sc, w:it.sel.w/it.sc, h:it.sel.h/it.sc });
+      it.sel=null; paintItem(it); draw();
     }
   });
+}
+
+/* ----- 사진 넣기 ----- */
+function addImg(k,src,cb){
+  var im=new Image();
+  im.onload=function(){
+    var it=새장();
+    it.full=im; it.use=im;
+    if(여러장[k]) SHOT[k].push(it);
+    else SHOT[k]=[it];                     // 한 장짜리 칸은 교체
+    renderSlot(k); draw();
+    if(cb)cb(true);
+  };
+  im.onerror=function(){ if(cb)cb(false); };
+  im.src=src;
+}
+// 예전 이름을 쓰던 곳이 있어 남겨 둡니다
+function setImg(k,src){ addImg(k,src); }
+
+function refreshSlot(k){ renderSlot(k); draw(); }
+
+SLOTS.forEach(function(k){
   $("s_"+k).addEventListener("click",function(){focusSlot(k);});
   $("f_"+k).addEventListener("change",function(e){
-    var f=e.target.files[0]; if(!f)return;
-    var r=new FileReader(); r.onload=function(){setImg(k,r.result);}; r.readAsDataURL(f);
-  });
-});
-SLOTS.forEach(function(k){
-  var z=$("z_"+k);
-  if(!z)return;
-  z.addEventListener("input",function(){
-    SHOT[k].zoom=+this.value/100;
-    $("zv_"+k).textContent=this.value+"%";
-    draw();
+    var fs=Array.prototype.slice.call(e.target.files||[]);
+    if(!fs.length)return;
+    if(!여러장[k])fs=fs.slice(0,1);
+    fs.forEach(function(f){
+      var r=new FileReader();
+      r.onload=function(){ addImg(k,r.result); };
+      r.readAsDataURL(f);
+    });
   });
 });
 
-document.querySelectorAll("[data-mode]").forEach(function(b){
-  b.addEventListener("click",function(){
-    var k=b.getAttribute("data-mode"), m=b.getAttribute("data-m");
-    SHOT[k].mode=m; SHOT[k].sel=null; paint(k);
-    document.querySelectorAll('[data-mode="'+k+'"]').forEach(function(o){
-      o.className="mini"+(o.getAttribute("data-m")===m?" pin on":"");
-    });
-    var cv=$("c_"+k);
-    if(cv)cv.style.cursor = m==="hl" ? "cell" : "crosshair";
-  });
-});
-document.querySelectorAll("[data-hlclear]").forEach(function(b){
-  b.addEventListener("click",function(){
-    var k=b.getAttribute("data-hlclear");
-    SHOT[k].hl=[]; SHOT[k].sel=null; paint(k); draw();
-  });
-});
-document.querySelectorAll("[data-crop]").forEach(function(b){
-  b.addEventListener("click",function(){
-    var k=b.getAttribute("data-crop"), s=SHOT[k];
-    if(!s.sel){alert("먼저 이미지 위를 드래그해 남길 영역을 지정하세요."); return;}
-    var o=document.createElement("canvas");
-    o.width=Math.max(1,Math.round(s.sel.w/s.sc));
-    o.height=Math.max(1,Math.round(s.sel.h/s.sc));
-    o.getContext("2d").drawImage(s.use,s.sel.x/s.sc,s.sel.y/s.sc,o.width,o.height,0,0,o.width,o.height);
-    setImgKeepFull(k,o.toDataURL());
-  });
-});
-function setImgKeepFull(k,src){
-  var im=new Image();
-  im.onload=function(){SHOT[k].use=im; SHOT[k].sel=null; refreshSlot(k);};
-  im.src=src;
-}
-document.querySelectorAll("[data-undo]").forEach(function(b){
-  b.addEventListener("click",function(){var k=b.getAttribute("data-undo");
-    SHOT[k].use=SHOT[k].full; SHOT[k].sel=null; refreshSlot(k);});
-});
-document.querySelectorAll("[data-del]").forEach(function(b){
-  b.addEventListener("click",function(){var k=b.getAttribute("data-del");
-    SHOT[k]={full:null,use:null,sel:null,sc:1}; $("f_"+k).value=""; refreshSlot(k);});
-});
 document.addEventListener("paste",function(e){
   var it=(e.clipboardData||{}).items||[];
   for(var i=0;i<it.length;i++){
     if(it[i].type.indexOf("image")===0){
       var r=new FileReader();
-      r.onload=function(){ $("dtShot").open=true; setImg(ACT,r.result); };
+      r.onload=function(){ $("dtShot").open=true; addImg(ACT,r.result); };
       r.readAsDataURL(it[i].getAsFile());
       e.preventDefault();
       return;
@@ -902,9 +908,17 @@ var SLOTLABEL={map:"경로 조회 화면", oil:"유가 조회 화면",
                toll:"통행료 증빙", park:"주차료 증빙"};
 
 function imagePages(){
-  return ["map","oil","toll","park"].filter(function(k){ return SHOT[k].use; })
-    .map(function(k){ return {key:k, im:SHOT[k].use, hl:SHOT[k].hl||[],
-                              zoom:(SHOT[k].zoom==null?1:SHOT[k].zoom)}; });
+  var out=[];
+  ["map","oil","toll","park"].forEach(function(k){
+    var 목록=SHOT[k].filter(function(it){return it.use;});
+    목록.forEach(function(it,i){
+      out.push({ key:k, im:it.use, hl:it.hl||[],
+                 zoom:(it.zoom==null?1:it.zoom),
+                 // 같은 칸에 여러 장이면 "통행료 증빙 (2/3)" 처럼 번호를 붙입니다
+                 label: SLOTLABEL[k] + (목록.length>1 ? " ("+(i+1)+"/"+목록.length+")" : "") });
+    });
+  });
+  return out;
 }
 
 function drawImagePage(cv,pg,no,total){
@@ -917,7 +931,7 @@ function drawImagePage(cv,pg,no,total){
 
   x.font="600 "+pt(PT.h2)+"px "+FONT; x.fillStyle=G;
   x.textAlign="left"; x.textBaseline="alphabetic";
-  x.fillText("증빙 "+no+" — "+SLOTLABEL[pg.key], M, head*0.72);
+  x.fillText("증빙 "+no+" — "+(pg.label||SLOTLABEL[pg.key]), M, head*0.72);
 
   var ox=M+((PAGE_W-M*2)-폭)/2, oy=head;
   x.drawImage(pg.im,ox,oy,box.w,box.h);
@@ -953,7 +967,7 @@ function draw(){
     var sep=document.createElement("div");
     sep.style.cssText="margin:14px 0 10px;font-size:12px;color:var(--mu);"
       +"border-top:1px dashed var(--ln-2);padding-top:10px";
-    sep.textContent=(i+2)+"쪽 — "+SLOTLABEL[pg.key];
+    sep.textContent=(i+2)+"쪽 — "+(pg.label||SLOTLABEL[pg.key]);
     box.appendChild(sep);
     var c=document.createElement("canvas");
     c.style.border="1px solid var(--ln)"; c.style.borderRadius="var(--radius)";
@@ -1585,7 +1599,9 @@ function ovFillToll(){
   버튼("한국도로공사", false, function(){
     ovWin("https://www.ex.co.kr/","한국도로공사 홈페이지를 열었습니다.");
   });
-  $("ovxy").textContent="종이 영수증이라면 사진을 찍어 아래 '파일에서 고르기'로 넣으셔도 됩니다.";
+  버튼("가져오기 (모바일 → PC)", false, qrStart);
+  $("ovxy").textContent="종이 영수증은 폰으로 찍어 바로 가져올 수 있습니다. "
+    + "아래 '파일에서 고르기'로 넣으셔도 됩니다.";
 }
 
 /* ----- 주차료 모드 ----- */
@@ -1597,7 +1613,7 @@ function ovFillPark(){
   $("ovs1sub").textContent="주차료는 실비로 정산합니다";
   $("ovparkamt").value="";
   버튼("가져오기 (모바일 → PC)", true, qrStart);
-  $("ovxy").textContent="폰으로 영수증을 찍어 바로 가져올 수 있습니다. "
+  $("ovxy").textContent="폰으로 영수증을 찍어 바로 가져올 수 있습니다 (여러 장 가능). "
     + "아래 '파일에서 고르기'나 '화면 캡처'로 넣으셔도 됩니다.";
 }
 
@@ -1606,7 +1622,7 @@ function ovFillPark(){
    사진은 우리 Worker 의 /receipt/poll 이 대신 받아옵니다(브라우저 CORS 회피).
    릴레이는 15분 뒤 자동 삭제되고, 한 번 받아가면 서버에서 즉시 지워집니다. */
 var QR_UPLOAD="https://receipt.hanatrust.workers.dev/upload.html",
-    QR_SESSION=null, QR_TIMER=null, QR_UNTIL=0, QR_COUNT=0, QR_SLOT="park";
+    QR_SESSION=null, QR_TIMER=null, QR_UNTIL=0, QR_COUNT=0, QR_TRY=0, QR_SLOT="park";
 
 function 세션ID(){
   try{ if(crypto&&crypto.randomUUID)return crypto.randomUUID(); }catch(e){}
@@ -1645,7 +1661,7 @@ function qrStart(){
     qrStat("파일을 직접 열면 사진을 받아올 수 없습니다. 웹서버 주소(https://…)로 접속하세요.",true);
     return;
   }
-  QR_SESSION=세션ID(); QR_COUNT=0;
+  QR_SESSION=세션ID(); QR_COUNT=0; QR_TRY=0;
   var url=QR_UPLOAD+"?s="+encodeURIComponent(QR_SESSION);
   $("ovqr").style.display="";
   $("qrurl").textContent=url;
@@ -1657,6 +1673,7 @@ function qrStart(){
   QR_UNTIL=Date.now()+15*60*1000;   // 릴레이 보관 한도와 맞춥니다
   clearInterval(QR_TIMER);
   QR_TIMER=setInterval(qrPoll,3000);
+  qrPoll();                         // 3초 기다리지 않고 바로 한 번
 }
 
 function qrStop(){
@@ -1670,24 +1687,65 @@ function qrPoll(){
     qrStat("15분이 지나 연결이 끊겼습니다. '새 QR'을 눌러 다시 시작하세요.",true);
     return;
   }
-  fetch("/receipt/poll?s="+encodeURIComponent(QR_SESSION))
-    .then(function(r){ return r.ok ? r.json() : null; })
-    .then(function(list){
-      if(!list||!list.length)return;
+  QR_TRY++;
+  var 이번세션=QR_SESSION;
+
+  fetch("/receipt/poll?s="+encodeURIComponent(이번세션),{cache:"no-store"})
+    .then(function(r){
+      // 화면 HTML 이 돌아오는 경우가 있어 본문을 먼저 글자로 받습니다
+      return r.text().then(function(t){ return {code:r.status, body:t}; });
+    })
+    .then(function(res){
+      if(이번세션!==QR_SESSION)return;      // 그새 새 QR 을 눌렀으면 버립니다
+
+      var t=(res.body||"").replace(/^\uFEFF/,"").trim();
+
+      if(t.charAt(0)==="<"){
+        qrStop();
+        qrStat("사진을 받아오는 통로가 아직 열려 있지 않습니다. "
+             +"wrangler.toml 의 run_worker_first 에 \"/receipt/*\" 가 들어갔는지 "
+             +"확인하고 다시 배포해 주세요.",true);
+        return;
+      }
+      if(res.code!==200){
+        var 이유="";
+        try{ 이유=(JSON.parse(t).error)||""; }catch(e){}
+        qrStat("사진을 받아오지 못했습니다 ("+res.code+(이유?" · "+이유:"")+"). "
+             +"계속 이러면 '새 QR' 을 눌러 다시 시작해 보세요.",true);
+        return;
+      }
+
+      var list;
+      try{ list=JSON.parse(t); }
+      catch(e){
+        qrStat("사진 목록을 읽지 못했습니다. 잠시 뒤 다시 시도합니다.",true);
+        return;
+      }
+      if(!list||!list.length){
+        qrStat(QR_COUNT
+          ? "사진 "+QR_COUNT+"장을 받았습니다. 더 보내시면 계속 들어옵니다."
+          : "폰 카메라로 QR을 찍어 사진을 보내면 여기로 들어옵니다. (기다리는 중… "+QR_TRY+")");
+        return;
+      }
+
+      var 들어옴=0;
       list.forEach(function(u){
         if(!u||!u.data)return;
-        setImg(QR_SLOT, "data:"+(u.type||"image/jpeg")+";base64,"+u.data);
-        QR_COUNT++;
+        addImg(QR_SLOT, "data:"+(u.type||"image/jpeg")+";base64,"+u.data);
+        QR_COUNT++; 들어옴++;
       });
+      if(!들어옴)return;
+
       $("dtShot").open=true;
-      SRC.park="주차료: 실제 영수증 금액 (모바일 전송)";
-      qrStat(QR_COUNT===1
-        ? "사진 1장을 받았습니다. 증빙 칸에 들어갔습니다."
-        : "사진 "+QR_COUNT+"장을 받았습니다. 칸이 하나라 마지막 장이 남습니다.",
-        QR_COUNT>1);
-      알림("사진을 가져왔습니다");
+      if(QR_SLOT==="park")SRC.park="주차료: 실제 영수증 금액 (모바일 전송)";
+      if(QR_SLOT==="toll")SRC.toll="통행료: 실제 영수증·이용내역 금액 (모바일 전송)";
+      qrStat("사진 "+QR_COUNT+"장을 받았습니다. 더 보내시면 계속 들어옵니다.");
+      알림(들어옴===1 ? "사진을 가져왔습니다" : "사진 "+들어옴+"장을 가져왔습니다");
     })
-    .catch(function(){ /* 다음 폴링에서 재시도 */ });
+    .catch(function(e){
+      qrStat("연결이 잠시 끊겼습니다. 다시 시도하는 중입니다… ("
+             +((e&&e.message)||"원인 불명")+")",true);
+    });
 }
 
 /* ----- 오피넷 조회화면 (POST) ----- */
@@ -2039,8 +2097,7 @@ $("clr").addEventListener("click",function(){
   $("toll").value="0"; $("park").value="0";
   // 증빙 네 칸을 모두 비웁니다 (통행료·주차료가 빠져 있었습니다)
   SLOTS.forEach(function(k){
-    SHOT[k]={full:null,use:null,sel:null,sc:1,hl:[],mode:"crop",zoom:1};
-    $("f_"+k).value=""; refreshSlot(k);
+    SHOT[k]=[]; $("f_"+k).value=""; renderSlot(k);
   });
   $("help").style.display="none";
   $("stat").textContent="";
