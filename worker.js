@@ -135,15 +135,17 @@ export default {
     //    브라우저에서 receipt 도메인을 직접 부르면 CORS 로 막힙니다.
     //    (receipt 쪽 Worker 가 Access-Control-Allow-Origin 을 붙이지 않음)
     //    그래서 여기서 서버끼리 대신 물어봐 줍니다. receipt 저장소는 수정하지 않습니다.
+    //    같은 계정의 workers.dev 서브도메인끼리라 일반 fetch() 로 부르면
+    //    Cloudflare 가 루프 방지로 막습니다(Error 1042) — 서비스 바인딩(RECEIPT)으로 부릅니다.
     //    릴레이는 한 번 받아가면 서버에서 지워지는 1회성이라 캐시하면 안 됩니다.
     if (path === "/receipt/poll") {
       const s = url.searchParams.get("s") || "";
       // 세션 ID 형식만 통과시켜 아무 주소나 중계되지 않게 막습니다
       if (!/^[0-9a-fA-F-]{8,40}$/.test(s)) return json({ error: "bad_session" }, 400);
       try {
-        const up = await fetch(
-          "https://receipt.hanatrust.workers.dev/api/poll?s=" + encodeURIComponent(s),
-          { headers: { accept: "application/json" }, cf: { cacheTtl: 0 } }
+        const up = await env.RECEIPT.fetch(
+          "https://receipt/api/poll?s=" + encodeURIComponent(s),
+          { headers: { accept: "application/json" } }
         );
         return new Response(up.body, {
           status: up.status,

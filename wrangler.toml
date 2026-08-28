@@ -10,5 +10,13 @@ binding = "ASSETS"
 # 매칭 안 된 모든 경로를 index.html 로 돌려버려서 API 가 Worker 에 도달하지 못합니다(v4.5).
 run_worker_first = ["/kakao/*", "/navi/*", "/opinet/*", "/tmap/*", "/receipt/*"]
 
+# 영수증 릴레이(receipt) 워커 호출용.
+# 같은 계정의 workers.dev 서브도메인끼리 fetch() 로 직접 부르면
+# Cloudflare 가 루프 방지로 막아버려(Error 1042) 늘 404 가 났습니다.
+# 서비스 바인딩은 네트워크를 안 거치고 워커끼리 직접 연결되므로 이 문제가 없습니다.
+[[services]]
+binding = "RECEIPT"
+service = "receipt"
+
 [observability]
 enabled = true
