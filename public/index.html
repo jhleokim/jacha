@@ -371,6 +371,7 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 <button class="mini" id="qrstop">중지</button>
 </div>
 </div>
+<div id="qrthumbs" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--ln)"></div>
 </div>
 </div>
 
@@ -675,6 +676,9 @@ function renderSlot(k){
     안내.textContent="이미지 위를 드래그해 남길 부분을 지정하세요. 사이드바나 검색 기록이 찍혔다면 잘라내면 됩니다.";
     통.appendChild(안내);
   }
+
+  // QR 로 사진을 받는 칸이면 모달 안 썸네일도 같이 최신 상태로 맞춥니다
+  if(k===QR_SLOT && $("ovqr") && $("ovqr").style.display!=="none")qrThumbs();
 }
 
 /* ----- 드래그(자르기·강조) ----- */
@@ -1654,8 +1658,51 @@ function qrStat(t,warn){
   e.textContent=t; e.className="note"+(warn?" warn":"");
 }
 
+/* 모달 안 QR 박스에 지금까지 들어온 사진을 작은 썸네일로 보여줍니다.
+   삭제도 여기서 바로 되고, 나머지 편집(자르기·강조 등)은 아래
+   '증빙 미리보기' 칸에서 합니다. renderSlot() 이 SHOT 을 바꿀 때마다
+   같이 불러 항상 같은 목록을 보여줍니다. */
+function qrThumbs(){
+  var 통=$("qrthumbs");
+  if(!통)return;
+  var 목록=(SHOT[QR_SLOT]||[]).filter(function(it){return it.use;});
+  if(!목록.length){ 통.style.display="none"; 통.innerHTML=""; return; }
+  통.style.display="block";
+  통.innerHTML="";
+  var 줄=document.createElement("div");
+  줄.style.cssText="display:flex;gap:8px;flex-wrap:wrap";
+  목록.forEach(function(it,idx){
+    var card=document.createElement("div");
+    card.style.cssText="position:relative;width:64px;height:64px;"
+      +"border:1px solid var(--ln);border-radius:8px;overflow:hidden;background:#fff";
+    var img=document.createElement("img");
+    img.src=it.use.src;
+    img.style.cssText="width:100%;height:100%;object-fit:cover;display:block";
+    card.appendChild(img);
+    var del=document.createElement("button");
+    del.type="button"; del.textContent="×";
+    del.setAttribute("aria-label","사진 삭제");
+    del.style.cssText="position:absolute;top:2px;right:2px;width:18px;height:18px;line-height:16px;"
+      +"padding:0;border:none;border-radius:50%;background:rgba(16,26,22,.65);color:#fff;"
+      +"font-size:13px;cursor:pointer";
+    del.addEventListener("click",function(e){
+      e.stopPropagation();
+      SHOT[QR_SLOT].splice(idx,1);
+      refreshSlot(QR_SLOT);
+    });
+    card.appendChild(del);
+    줄.appendChild(card);
+  });
+  통.appendChild(줄);
+  var 안내=document.createElement("p");
+  안내.className="note"; 안내.style.cssText="margin:8px 0 0";
+  안내.textContent=목록.length+"장 받음 — 자르기·강조 같은 편집은 아래 '증빙 미리보기'에서 할 수 있습니다.";
+  통.appendChild(안내);
+}
+
 function qrStart(){
   QR_SLOT = OVMODE==="park" ? "park" : (OVMODE==="toll" ? "toll" : "park");
+  qrThumbs();
   if(OFFLINE){
     $("ovqr").style.display="";
     qrStat("파일을 직접 열면 사진을 받아올 수 없습니다. 웹서버 주소(https://…)로 접속하세요.",true);
