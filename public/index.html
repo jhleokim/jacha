@@ -1885,6 +1885,8 @@ function qrPoll(){
 // 오피넷 평균판매가격 조회는 POST 라 주소만으로는 조건이 실리지 않습니다.
 // 숨은 폼을 만들어 보내면 조건이 걸린 결과가 바로 열립니다.
 function 오피넷기간(){
+  // 출장 당일 하루만 조회합니다.
+  // (기간으로 열면 표가 길어져 어느 줄을 봐야 하는지 헷갈립니다)
   var 어제=new Date(); 어제.setHours(0,0,0,0); 어제.setDate(어제.getDate()-1);
   var e=null;
   if($("date").value){
@@ -1892,9 +1894,14 @@ function 오피넷기간(){
     if(!isNaN(t.getTime()))e=t;
   }
   if(!e)e=new Date(어제);
-  if(e>어제)e=new Date(어제);          // 오피넷은 전일까지만 공개합니다
-  var s=new Date(e); s.setDate(s.getDate()-6);
-  return {s:s, e:e};
+  var 물러섬=false;
+  if(e>어제){ e=new Date(어제); 물러섬=true; }   // 오피넷은 전일까지만 공개합니다
+  return {s:new Date(e), e:e, 물러섬:물러섬};
+}
+// 조회하는 날짜 한 줄 (YYYY-MM-DD)
+function 오피넷조회일(r){
+  var d=_ymd(r.e);
+  return d.y+"-"+d.m+"-"+d.d;
 }
 function _p2(n){ return n<10?"0"+n:String(n); }
 function _ymd(d){ return {y:String(d.getFullYear()), m:_p2(d.getMonth()+1), d:_p2(d.getDate())}; }
@@ -1914,7 +1921,7 @@ function opinetFields(){
 }
 
 function opinetOpen(){
-  var r=오피넷기간(), a=_ymd(r.s), b=_ymd(r.e);
+  var r=오피넷기간();
   var w=Math.min(1200,Math.max(900,screen.availWidth-460));
   var h=Math.min(880,Math.max(650,screen.availHeight-140));
   var lf=Math.max(0,Math.round((screen.availWidth-w)/2));
@@ -1939,8 +1946,9 @@ function opinetOpen(){
   try{ win.focus(); }catch(e){}
   capHelper("오피넷 조회 결과");
 
-  $("ovxy").textContent = a.y+"-"+a.m+"-"+a.d+" ~ "+b.y+"-"+b.m+"-"+b.d
-    + " 일별 평균가 조회 결과를 열었습니다. 옆에 뜬 캡처 창의 '현재 화면 캡처' 를 누르면 창 목록에서 골라 3단계로 바로 보냅니다.";
+  $("ovxy").textContent = 오피넷조회일(r)+" 하루치 전국 평균가 조회 결과를 열었습니다."
+    + (r.물러섬?" (출장일 값은 아직 공개 전이라 가장 가까운 날짜입니다)":"")
+    + " 옆에 뜬 캡처 창의 '현재 화면 캡처' 를 누르면 창 목록에서 골라 3단계로 바로 보냅니다.";
 }
 
 /* ----- 유가 모드 ----- */
@@ -1959,9 +1967,9 @@ function ovFillOil(){
   버튼("오피넷 메인", false, function(){
     ovWin("https://www.opinet.co.kr/user/main/mainView.do","오피넷 메인 화면을 열었습니다.", "오피넷");
   });
-  var _r=오피넷기간(), _a=_ymd(_r.s), _b=_ymd(_r.e);
-  $("ovxy").textContent="조회 기간 "+_a.y+"-"+_a.m+"-"+_a.d+" ~ "+_b.y+"-"+_b.m+"-"+_b.d
-    + " (일별 전국 평균가)";
+  var _r=오피넷기간();
+  $("ovxy").textContent="조회일 "+오피넷조회일(_r)+" 하루치 전국 평균가로 열립니다"
+    + (_r.물러섬?" (출장일 값은 아직 공개 전이라 가장 가까운 날짜)":"");
 
   // 들어오자마자 자동으로 조회해 채웁니다. 화면 캡처가 필요할 때만 아래 버튼을 쓰면 됩니다.
   $("ovs1sub").textContent="유가를 자동으로 조회하는 중…";
@@ -1980,7 +1988,7 @@ function ovFillOil(){
   },function(e){
     $("ovs1sub").textContent="자동 조회 실패 — "+((e&&e.message)||"원인 불명");
     $("ovxy").textContent="조회화면을 열어 값을 확인하고 4단계에 직접 넣으세요. "
-      + "조회 기간 "+_a.y+"-"+_a.m+"-"+_a.d+" ~ "+_b.y+"-"+_b.m+"-"+_b.d;
+      + "조회일 "+오피넷조회일(_r);
   });
 }
 
