@@ -242,10 +242,12 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 <label class="ck"><input id="rt" type="checkbox" checked> 왕복</label>
 <div class="row">
 <button id="chkaddr">주소 확인</button>
-<button class="p2" id="omap">지도에서 경로확인하기 (증빙)</button>
 <span class="cue" id="nextcue"></span>
 </div>
 <div id="addrbox" class="addrbox"></div>
+<div class="row" id="omaprow">
+<button class="p2" id="omap">지도에서 경로확인하기 (증빙)</button>
+</div>
 <p class="note" id="hint1">지도에서 경로를 조회해 <b>화면을 캡처</b>하고, 거리는 편도로 입력하면 왕복까지 계산됩니다.</p>
 <p class="note" id="stat"></p>
 <div id="help" style="display:none;border:1px solid var(--ln);border-radius:8px;padding:14px 16px;margin-top:12px;background:#fbfcfc"></div>
@@ -259,7 +261,6 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 <div>
 <div class="fh crowded"><label for="price">유가 (원/L)</label>
 <span class="fhbtns">
-<button type="button" class="pin" id="getoil"><i></i>조회</button>
 <button type="button" class="pin" id="oilshot"><i></i>증빙</button>
 </span></div>
 <input id="price" type="number" step="1" min="0" placeholder="1652"></div>
@@ -276,7 +277,7 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 </span></div>
 <input id="park" type="number" step="10" min="0" value="0"></div>
 </div>
-<p class="note" id="hint2">유가 옆 <b>조회</b>를 누르면 <b>출장일자</b>와 <b>유종</b> 기준 오피넷 전국 평균 유가를 가져옵니다.</p>
+<p class="note" id="hint2">유가 옆 <b>증빙</b>을 누르면 <b>출장일자</b>와 <b>유종</b> 기준 오피넷 전국 평균 유가를 바로 조회해 채우고, 증빙 화면도 함께 열어 줍니다.</p>
 <p class="note" id="stat2"></p>
 <p class="note">조회가 안 되면 지도·오피넷에서 확인한 값을 직접 넣으셔도 됩니다.</p>
 </section>
@@ -386,6 +387,7 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 <div class="g" style="margin-top:8px">
 <div><label for="ovkm">편도 거리 (km)</label><input id="ovkm" type="number" step="0.1" min="0" placeholder="65.2"></div>
 </div>
+<p class="note" id="ovkmnote" style="margin-top:8px"></p>
 <label class="ck"><input id="ovrt" type="checkbox"> <b>왕복으로 적용</b> — 거리와 통행료를 2배로 계산합니다</label>
 <div id="ovcalc" class="calcbox"></div>
 </div>
@@ -1121,6 +1123,33 @@ function lookupOil(date,fuel){
     });
 }
 
+// YYYY-MM-DD 에서 n일 전. 정오 기준이라 시차로 날짜가 밀리지 않습니다.
+function 날짜빼기(d,n){
+  var t=new Date(d+"T12:00:00");
+  t.setDate(t.getDate()-n);
+  return t.getFullYear()+"-"+("0"+(t.getMonth()+1)).slice(-2)+"-"+("0"+t.getDate()).slice(-2);
+}
+
+// 오피넷은 전일까지만 공개합니다. 출장일 값이 아직 없으면
+// 공개된 가장 가까운 앞 날짜까지 물러서서 찾아 줍니다.
+function lookupOil가까운(date,fuel){
+  var 오늘=new Date();
+  var 어제=날짜빼기(오늘.getFullYear()+"-"+("0"+(오늘.getMonth()+1)).slice(-2)
+                   +"-"+("0"+오늘.getDate()).slice(-2), 1);
+  var 시작 = (date>어제) ? 어제 : date;
+
+  function 한번(d,남음){
+    return lookupOil(d,fuel).then(function(v){
+      var 쓴날=(v.date||"").replace(/(\d{4})(\d{2})(\d{2})/,"$1-$2-$3")||d;
+      return {price:v.price, date:쓴날, 대체:쓴날!==date};
+    },function(e){
+      if(남음<=0)throw new Error("최근 공개된 유가를 찾지 못했습니다 (오피넷은 전일까지만 공개)");
+      return 한번(날짜빼기(d,1),남음-1);
+    });
+  }
+  return 한번(시작,7);
+}
+
 function setMode(){
   var b=$("mode");
   if(OFFLINE){
@@ -1132,7 +1161,7 @@ function setMode(){
   }
   if(SRV.addr||SRV.oil){
     b.className="badge on"; b.textContent="조회 가능";
-    $("lead").textContent="지도에서 경로를 확인해 캡처하고, 유가는 조회 버튼으로 채우면 됩니다. 정산 내용은 어디에도 저장되지 않습니다.";
+    $("lead").textContent="지도에서 경로를 확인해 캡처하고, 유가는 증빙 버튼을 누르면 자동으로 채워집니다. 정산 내용은 어디에도 저장되지 않습니다.";
   }else{
     b.className="badge"; b.textContent="직접 입력 모드";
     $("lead").textContent="지금은 거리와 유가를 직접 넣는 모드입니다. 계산과 증빙 만들기는 그대로 됩니다.";
@@ -1356,45 +1385,36 @@ function 확정좌표(){
 }
 
 /* ---------- 유가 조회 ---------- */
+// 조회 버튼을 따로 두지 않습니다. '증빙' 을 누르면 그 안에서 자동으로 조회해
+// 값을 채우고, 필요하면 오피넷 화면으로 확인·캡처하게 합니다.
 var OIL_OK=null;   // 마지막으로 조회에 성공한 {날짜, 유종}
 
-function oilPill(state,text){
-  var b=$("getoil");
-  b.className="pin"+(state==="on"?" on":(state==="err"?" err":""));
-  b.innerHTML='<i></i>'+text;
-}
-function oilPillSync(){
-  // 날짜나 유종이 바뀌면 "조회됨" 표시를 거둡니다
-  if(OIL_OK && OIL_OK.d===$("date").value && OIL_OK.f===$("oil").value)oilPill("on","조회됨");
-  else oilPill("","조회");
-}
-
-$("getoil").addEventListener("click",function(){
-  if(!SRV.oil){ showHelp("유가"); return; }
-  if(!$("date").value){ alert("출장일자를 먼저 정하세요."); return; }
-
+// 유가 자동 조회. 성공하면 화면 값까지 채웁니다.
+// 실패해도 직접 넣으면 되므로 조용히 사유만 알려 줍니다.
+function 유가자동조회(알림){
   var d=$("date").value, f=$("oil").value;
-  $("getoil").disabled=true;
-  oilPill("","조회 중");
+  if(!SRV.oil)return Promise.reject(new Error("유가 조회가 설정되어 있지 않습니다"));
+  if(!d)return Promise.reject(new Error("출장일자를 먼저 정하세요"));
+
+  if(알림)알림("오피넷에서 "+d+" 기준 "+f+" 전국 평균가를 찾는 중…");
   $("stat2").textContent="오피넷에서 "+d+" 기준 "+f+" 전국 평균가를 찾는 중…";
 
-  lookupOil(d,f).then(function(v){
-    $("price").value=Math.round(v.price);
+  return lookupOil가까운(d,f).then(function(v){
+    var 값=Math.round(v.price);
+    $("price").value=값;
     OIL_OK={d:d,f:f};
     SRC.oil="유가: 한국석유공사 오피넷 전국 평균판매가격 ("+v.date+" 기준)";
-    oilPill("on","조회됨");
-    $("stat2").textContent=f+" "+KO(Math.round(v.price))+" 원/L  ·  "+v.date+" 전국 평균  ·  출처 오피넷";
+    $("stat2").textContent=f+" "+KO(값)+" 원/L  ·  "+v.date+" 전국 평균  ·  출처 오피넷"
+      + (v.대체?"  ·  출장일 당일 값은 아직 공개 전이라 가장 가까운 날짜입니다":"");
     draw();
+    return {값:값, 날짜:v.date, 유종:f, 대체:v.대체};
   },function(e){
     OIL_OK=null;
-    oilPill("err","실패");
     $("stat2").textContent=((e&&e.message)||"조회 실패")
-      +" — 오피넷 홈페이지에서 확인해 직접 넣으셔도 됩니다.";
-  })["finally"](function(){ $("getoil").disabled=false; });
-});
-
-$("date").addEventListener("change",oilPillSync);
-$("oil").addEventListener("change",oilPillSync);
+      +" — 오피넷 화면에서 확인해 직접 넣으셔도 됩니다.";
+    throw e;
+  });
+}
 
 /* ---------- 지도 팝업 + 화면 캡처 ---------- */
 var CAP=null, CAPSEL=null, CAPSC=1, OVXY=null;
@@ -1413,10 +1433,10 @@ function ovOpen(mode){
   var 제목={route:"네이버 빠른길찾기로 경로 확인",
             toll :"통행료 증빙 넣기",
             park :"주차료 증빙 넣기",
-            oil  :"오피넷에서 유가 확인"};
+            oil  :"유가 확인·증빙 넣기"};
   var s1={route:"주소 확인", toll:"정산 조건", park:"정산 조건", oil:"조회 조건"};
   var s2={route:"지도를 열어 직접 조회", toll:"이용내역 열기 (선택)",
-          park:"영수증 준비", oil:"오피넷을 열어 직접 조회"};
+          park:"영수증 준비", oil:"증빙 화면 열기 (선택)"};
   $("ovtitle").textContent=제목[OVMODE];
   $("ovs1").textContent=s1[OVMODE];
   $("ovs2").textContent=s2[OVMODE];
@@ -1486,6 +1506,7 @@ function ovFillRoute(){
 
   $("ovrt").checked = $("rt").checked;
   $("ovkm").value="";
+  $("ovkmnote").textContent="";
   ovCalc();
 
   var 양끝 = $("from").value.trim() && $("to").value.trim();
@@ -1496,12 +1517,48 @@ function ovFillRoute(){
     var 경유수=확정.length-2;
     $("ovxy").textContent="확인한 주소로 열립니다 — "+확정[0].nm+" → "+확정[확정.length-1].nm
       + (경유수>0?"  (경유 "+경유수+"곳)":"");
+    거리채우기(확정);
   }
   else if(양끝){ ovGeocode(a); }
   else{
     ovLock(false);
     $("ovxy").textContent="출발지·도착지가 다 있어야 경로가 자동으로 뜹니다 — 지금은 빈 화면이 열립니다";
   }
+}
+
+/* 길찾기가 첫 번째로 안내하는 경로의 거리를 미리 받아 4단계에 채웁니다.
+   지도 화면(네이버 등)은 다른 회사 사이트라 그 안의 숫자를 읽어올 수 없어,
+   같은 조건으로 카카오 길찾기(RECOMMEND, 우선 경로)에 한 번 더 물어봅니다.
+   값이 다를 수 있으니 지도 화면 값이 우선이라고 안내하고, 실패하면 조용히 넘어갑니다. */
+function 자동거리(cs){
+  if(!cs||cs.length<2)return Promise.reject(new Error("좌표가 모자랍니다"));
+  var q="origin="+cs[0].x+","+cs[0].y
+       +"&destination="+cs[cs.length-1].x+","+cs[cs.length-1].y
+       +"&priority=RECOMMEND&road_details=false";
+  var 경유=cs.slice(1,-1);
+  if(경유.length){
+    q+="&waypoints="+경유.map(function(c){ return c.x+","+c.y; }).join("|");
+  }
+  return jget("/navi/v1/directions?"+q).then(function(j){
+    var r=j&&j.routes&&j.routes[0];
+    if(!r||r.result_code!==0)throw new Error((r&&r.result_msg)||"경로를 찾지 못했습니다");
+    var m=r.summary&&r.summary.distance;
+    if(!(m>0))throw new Error("거리를 받지 못했습니다");
+    return Math.round(m/100)/10;      // m → km, 0.1km 단위
+  });
+}
+
+function 거리채우기(cs){
+  자동거리(cs).then(function(km){
+    if($("ovkm").value)return;        // 직접 넣은 값은 건드리지 않습니다
+    $("ovkm").value=km;
+    ovCalc();
+    $("ovkmnote").textContent="자동으로 채운 값입니다 (우선 안내 경로 "+km.toFixed(1)
+      +" km · 편도). 지도 화면의 거리와 다르면 그 값으로 고쳐 주세요.";
+    $("ovkmnote").className="note";
+  },function(){
+    $("ovkmnote").textContent="";     // 자동 조회가 안 되면 직접 넣으면 됩니다
+  });
 }
 
 function ovGeocode(a){
@@ -1513,6 +1570,7 @@ function ovGeocode(a){
     $("ovxy").textContent="준비됐습니다 — 경유지 포함 경로가 조회된 채로 열립니다"
       + (경유수>0?" (경유 "+경유수+"곳)":"");
     ovLock(false);
+    거리채우기(cs);
   },function(e){
     OVXY=null;
     $("ovxy").textContent="좌표를 못 얻었습니다 ("+((e&&e.message)||"원인 불명")
@@ -1586,7 +1644,7 @@ function ovMapOpen(which){
   if(!딥) 안내="빈 화면이 열렸습니다. 주소를 붙여넣어 조회한 뒤 3단계로 오세요.";
   else if(경유수>0) 안내="경유지 "+경유수+"곳을 포함한 경로로 열었습니다.";
   else 안내="경로가 조회된 채로 열렸습니다. 거리를 확인하고 3단계로 오세요.";
-  ovWin(url, 안내);
+  ovWin(url, 안내, which==="naver" ? "네이버 지도 경로" : "카카오맵 경로");
 }
 
 /* ----- 통행료 모드 ----- */
@@ -1598,10 +1656,10 @@ function ovFillToll(){
   $("ovs1sub").textContent="통행료는 실비로 정산합니다";
   $("ovtollamt").value="";
   버튼("하이패스 이용내역", true, function(){
-    ovWin("https://www.hipass.co.kr/","하이패스 이용내역을 열었습니다. 로그인 후 해당 날짜 내역을 조회하세요.");
+    ovWin("https://www.hipass.co.kr/","하이패스 이용내역을 열었습니다. 로그인 후 해당 날짜 내역을 조회하세요.", "하이패스 이용내역");
   });
   버튼("한국도로공사", false, function(){
-    ovWin("https://www.ex.co.kr/","한국도로공사 홈페이지를 열었습니다.");
+    ovWin("https://www.ex.co.kr/","한국도로공사 홈페이지를 열었습니다.", "한국도로공사 화면");
   });
   버튼("가져오기 (모바일 → PC)", false, qrStart);
   $("ovxy").textContent="종이 영수증은 폰으로 찍어 바로 가져올 수 있습니다. "
@@ -1850,9 +1908,10 @@ function opinetOpen(){
   f.submit();
   setTimeout(function(){ f.remove(); },1000);
   try{ win.focus(); }catch(e){}
+  capHelper("오피넷 조회 결과");
 
   $("ovxy").textContent = a.y+"-"+a.m+"-"+a.d+" ~ "+b.y+"-"+b.m+"-"+b.d
-    + " 일별 평균가 조회 결과를 열었습니다. 표에서 유종을 확인하고 3단계로 오세요.";
+    + " 일별 평균가 조회 결과를 열었습니다. 오른쪽 위 작은 창의 '현재 화면 캡처' 를 누르면 사진이 바로 들어옵니다.";
 }
 
 /* ----- 유가 모드 ----- */
@@ -1861,19 +1920,64 @@ function ovFillOil(){
   줄("유종", $("oil").value, false);
   var 현재=$("price").value;
   if(현재)줄("현재 입력값", KO(Math.round(Number(현재)))+" 원/L", false);
-  $("ovs1sub").textContent="조회화면이 이 기간으로 바로 열립니다";
   $("ovprice").value="";
   버튼("조회화면 바로 열기", true, opinetOpen);
   버튼("오피넷 메인", false, function(){
-    ovWin("https://www.opinet.co.kr/user/main/mainView.do","오피넷 메인 화면을 열었습니다.");
+    ovWin("https://www.opinet.co.kr/user/main/mainView.do","오피넷 메인 화면을 열었습니다.", "오피넷");
   });
   var _r=오피넷기간(), _a=_ymd(_r.s), _b=_ymd(_r.e);
   $("ovxy").textContent="조회 기간 "+_a.y+"-"+_a.m+"-"+_a.d+" ~ "+_b.y+"-"+_b.m+"-"+_b.d
     + " (일별 전국 평균가)";
+
+  // 들어오자마자 자동으로 조회해 채웁니다. 화면 캡처가 필요할 때만 아래 버튼을 쓰면 됩니다.
+  $("ovs1sub").textContent="유가를 자동으로 조회하는 중…";
+  유가자동조회().then(function(r){
+    $("ovs1sub").textContent="자동 조회 완료 — "+r.유종+" "+KO(r.값)+" 원/L ("+r.날짜+" 전국 평균)";
+    줄("자동 조회값", KO(r.값)+" 원/L  ·  "+r.날짜+" 기준"
+       + (r.대체?" (출장일 값은 아직 공개 전)":""), false);
+    $("ovxy").textContent="유가는 이미 채워졌습니다. 증빙 화면이 필요하면 아래에서 열어 캡처하세요.";
+  },function(e){
+    $("ovs1sub").textContent="자동 조회 실패 — "+((e&&e.message)||"원인 불명");
+    $("ovxy").textContent="조회화면을 열어 값을 확인하고 4단계에 직접 넣으세요. "
+      + "조회 기간 "+_a.y+"-"+_a.m+"-"+_a.d+" ~ "+_b.y+"-"+_b.m+"-"+_b.d;
+  });
 }
 
 /* ----- 공용 ----- */
-function ovWin(url, msg){
+// 증빙 화면은 다른 회사 사이트라 그 안에 버튼을 넣을 수 없습니다.
+// 대신 '현재 화면 캡처' 버튼만 담은 작은 창을 옆에 같이 띄웁니다.
+// (창을 최소화해 버려도 이 창에서 바로 캡처할 수 있습니다)
+var CAPWIN=null;
+function capHelper(이름){
+  if(OFFLINE)return;
+  try{
+    var w=380, h=250;
+    var lf=Math.max(0,screen.availWidth-w-20), tp=20;
+    CAPWIN=window.open("capture.html"+(이름?"?t="+encodeURIComponent(이름):""),
+      "jacha_cap",
+      "width="+w+",height="+h+",left="+lf+",top="+tp+",resizable=yes,scrollbars=no");
+  }catch(e){ CAPWIN=null; }
+}
+function capHelperClose(){
+  try{ if(CAPWIN&&!CAPWIN.closed)CAPWIN.close(); }catch(e){}
+  CAPWIN=null;
+}
+
+// 작은 창에서 캡처한 사진을 받아 3단계에 그대로 넣습니다
+window.addEventListener("message",function(e){
+  if(e.origin!==location.origin)return;
+  var d=e.data;
+  if(!d||d.t!=="jacha-cap"||!d.url)return;
+  var im=new Image();
+  im.onload=function(){
+    CAP=im; CAPSEL=null; capShow();
+    capMsg("캡처한 화면을 가져왔습니다. 필요한 부분을 드래그해 지정하고 '이 내용으로 반영' 을 누르세요.");
+  };
+  im.src=d.url;
+  try{ window.focus(); }catch(err){}
+});
+
+function ovWin(url, msg, 이름){
   var w=Math.min(1200,Math.max(900,screen.availWidth-460));
   var h=Math.min(880,Math.max(650,screen.availHeight-140));
   var lf=Math.max(0,Math.round((screen.availWidth-w)/2));
@@ -1882,9 +1986,10 @@ function ovWin(url, msg){
     "width="+w+",height="+h+",left="+lf+",top="+tp+",resizable=yes,scrollbars=yes");
   if(!win){ $("ovxy").textContent="팝업이 차단되었습니다. 주소창 오른쪽에서 허용해 주세요."; return; }
   try{ win.focus(); }catch(e){}
-  $("ovxy").textContent=msg;
+  capHelper(이름);
+  $("ovxy").textContent=msg+" 오른쪽 위 작은 창의 '현재 화면 캡처' 를 누르면 사진이 바로 들어옵니다.";
 }
-function ovClose(){ qrStop(); $("ov").className="ov"; }
+function ovClose(){ qrStop(); capHelperClose(); $("ov").className="ov"; }
 
 /* ----- 캡처 ----- */
 function capReset(){
@@ -2034,7 +2139,7 @@ $("ovuse").addEventListener("click",function(){
     var pr=parseFloat($("ovprice").value);
     if(pr>0){
       $("price").value=Math.round(pr);
-      OIL_OK=null; oilPillSync();
+      OIL_OK=null;
       SRC.oil="유가: 오피넷 화면 직접 확인 ("+($("date").value||"")+" 기준)";
       적용.push("유가 "+KO(Math.round(pr))+"원/L");
     }
@@ -2170,7 +2275,6 @@ $("fszv").textContent=PT.body+" pt";
 $("iszv").textContent="100%";
 $("date").value=new Date().toISOString().slice(0,10);
 pinInit();
-oilPillSync();
 focusSlot("map");
 setMode();
 draw();
