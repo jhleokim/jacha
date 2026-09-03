@@ -438,7 +438,8 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 <div class="g" style="margin-top:8px">
 <div><label for="ovprice">유가 (원/L)</label><input id="ovprice" type="number" step="1" min="0" placeholder="1698"></div>
 </div>
-<p class="note">이미 자동 조회로 채워져 있으면 비워 두셔도 됩니다. 캡처만 반영됩니다.</p>
+<p class="note" id="ovpricenote"></p>
+<p class="note">증빙 버튼을 누르면 자동으로 채워집니다. 오피넷 화면 값이 다르면 고쳐 넣으세요.</p>
 </div>
 
 </div>
@@ -1934,6 +1935,7 @@ function opinetOpen(){
   document.body.appendChild(f);
   f.submit();
   setTimeout(function(){ f.remove(); },1000);
+  REFWIN=win;
   try{ win.focus(); }catch(e){}
   capHelper("오피넷 조회 결과");
 
@@ -1942,12 +1944,17 @@ function opinetOpen(){
 }
 
 /* ----- 유가 모드 ----- */
+// 4단계 칸의 값이 '자동으로 채운 그 값' 그대로인지 구분하려고 들고 있습니다.
+// (그대로면 출처를 오피넷 자동 조회로, 고쳐 넣었으면 화면 확인으로 적습니다)
+var OV_OIL_AUTO=null;
+
 function ovFillOil(){
   줄("출장일자", $("date").value || "(미입력)", false);
   줄("유종", $("oil").value, false);
   var 현재=$("price").value;
   if(현재)줄("현재 입력값", KO(Math.round(Number(현재)))+" 원/L", false);
-  $("ovprice").value="";
+  $("ovprice").value=""; OV_OIL_AUTO=null;
+  $("ovpricenote").textContent="";
   버튼("조회화면 바로 열기", true, opinetOpen);
   버튼("오피넷 메인", false, function(){
     ovWin("https://www.opinet.co.kr/user/main/mainView.do","오피넷 메인 화면을 열었습니다.", "오피넷");
@@ -1962,6 +1969,13 @@ function ovFillOil(){
     $("ovs1sub").textContent="자동 조회 완료 — "+r.유종+" "+KO(r.값)+" 원/L ("+r.날짜+" 전국 평균)";
     줄("자동 조회값", KO(r.값)+" 원/L  ·  "+r.날짜+" 기준"
        + (r.대체?" (출장일 값은 아직 공개 전)":""), false);
+    // 4단계 입력칸에도 그대로 채워 둡니다. 오피넷 화면 값이 다르면 고쳐 쓰면 됩니다.
+    if(!$("ovprice").value){
+      $("ovprice").value=r.값;
+      OV_OIL_AUTO=r.값;
+      $("ovpricenote").textContent="자동 조회로 채운 값입니다 ("+r.날짜+" 전국 평균"
+        + (r.대체?" · 출장일 값은 아직 공개 전":"")+"). 화면 값이 다르면 고쳐 주세요.";
+    }
     $("ovxy").textContent="유가는 이미 채워졌습니다. 증빙 화면이 필요하면 아래에서 열어 캡처하세요.";
   },function(e){
     $("ovs1sub").textContent="자동 조회 실패 — "+((e&&e.message)||"원인 불명");
@@ -2067,7 +2081,7 @@ $("popagain").addEventListener("click",function(){
 // 증빙 화면은 다른 회사 사이트라 그 안에 버튼을 넣을 수 없습니다.
 // 대신 '현재 화면 캡처' 버튼만 담은 작은 창을 옆에 같이 띄웁니다.
 // (창을 최소화해 버려도 이 창에서 바로 캡처할 수 있습니다)
-var CAPWIN=null;
+var CAPWIN=null, REFWIN=null;
 function capHelper(이름){
   if(OFFLINE)return;
   try{
@@ -2085,12 +2099,32 @@ function capHelperClose(){
   try{ if(CAPWIN&&!CAPWIN.closed)CAPWIN.close(); }catch(e){}
   CAPWIN=null;
 }
+// 캡처가 끝나면 증빙 창과 캡처 창을 손으로 하나씩 닫아야 했습니다.
+// 두 창 모두 우리가 연 창이라 여기서 함께 닫아 줍니다.
+function 증빙창닫기(){
+  try{ if(REFWIN&&!REFWIN.closed)REFWIN.close(); }catch(e){}
+  REFWIN=null;
+}
+function 딸린창닫기(){ capHelperClose(); 증빙창닫기(); }
+function 딸린창있나(){
+  try{ return !!((CAPWIN&&!CAPWIN.closed)||(REFWIN&&!REFWIN.closed)); }catch(e){ return false; }
+}
 
 // 작은 창에서 캡처한 사진을 받아 3단계에 그대로 넣습니다
 window.addEventListener("message",function(e){
   if(e.origin!==location.origin)return;
   var d=e.data;
-  if(!d||d.t!=="jacha-cap"||!d.url)return;
+  if(!d)return;
+
+  // 캡처 창의 '창 닫고 돌아가기'
+  if(d.t==="jacha-cap-close"){
+    딸린창닫기();
+    try{ window.focus(); }catch(err){}
+    capMsg("증빙 창과 캡처 창을 닫았습니다. 필요한 부분을 드래그해 지정하고 '이 내용으로 반영' 을 누르세요.");
+    return;
+  }
+
+  if(d.t!=="jacha-cap"||!d.url)return;
   var im=new Image();
   im.onload=function(){
     CAP=im; CAPSEL=null; capShow();
@@ -2113,13 +2147,14 @@ function ovWin(url, msg, 이름){
       + "이 창을 닫고 화면 맨 위의 '팝업 허용이 필요합니다' 안내대로 허용해 주세요.";
     return;
   }
+  REFWIN=win;
   try{ win.focus(); }catch(e){}
   capHelper(이름);
   $("ovxy").textContent = msg + (CAPWIN
     ? " 옆에 뜬 캡처 창의 '현재 화면 캡처' 를 누르면 창 목록에서 골라 3단계로 바로 보냅니다."
     : " 캡처 창은 팝업이 막혀 열리지 않았습니다 — 아래 '화면 캡처' 를 쓰시거나 팝업을 허용해 주세요.");
 }
-function ovClose(){ qrStop(); capHelperClose(); $("ov").className="ov"; }
+function ovClose(){ qrStop(); 딸린창닫기(); $("ov").className="ov"; }
 
 /* ----- 캡처 ----- */
 function capReset(){
@@ -2171,8 +2206,20 @@ function capStart(){
 function capShow(){
   $("ovshot").innerHTML='<canvas id="ovcv"></canvas>'
     +'<p class="note" id="ovmsg" style="margin-top:10px">필요한 부분을 드래그해 지정하세요. 그냥 두면 전체가 들어갑니다.</p>'
-    +'<div class="row" style="justify-content:center"><button class="mini" id="ovagain">다시 캡처</button></div>';
+    +'<div class="row" style="justify-content:center">'
+    +'<button class="mini" id="ovagain">다시 캡처</button>'
+    +'<button class="mini" id="ovwinclose" style="display:none">증빙·캡처 창 닫기</button>'
+    +'</div>';
   $("ovagain").addEventListener("click",capReset);
+  var 닫기=$("ovwinclose");
+  if(딸린창있나()){
+    닫기.style.display="";
+    닫기.addEventListener("click",function(){
+      딸린창닫기();
+      닫기.style.display="none";
+      capMsg("증빙 창과 캡처 창을 닫았습니다. 필요한 부분을 드래그해 지정하고 '이 내용으로 반영' 을 누르세요.");
+    });
+  }
   capPaint(); bindCapDrag();
 }
 function capPaint(){
@@ -2269,8 +2316,12 @@ $("ovuse").addEventListener("click",function(){
     var pr=parseFloat($("ovprice").value);
     if(pr>0){
       $("price").value=Math.round(pr);
-      OIL_OK=null;
-      SRC.oil="유가: 오피넷 화면 직접 확인 ("+($("date").value||"")+" 기준)";
+      if(OV_OIL_AUTO!==null && Math.round(pr)===Math.round(OV_OIL_AUTO)){
+        // 자동으로 채운 값을 그대로 쓴 경우 — 출처는 이미 오피넷 조회로 적혀 있습니다
+      }else{
+        OIL_OK=null;
+        SRC.oil="유가: 오피넷 화면 직접 확인 ("+($("date").value||"")+" 기준)";
+      }
       적용.push("유가 "+KO(Math.round(pr))+"원/L");
     }
   }
