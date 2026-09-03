@@ -1607,15 +1607,17 @@ function kakaoUrl(cs,names){
 }
 
 function naverUrl(cs,names){
-  // 네이버는 [출발, 도착, 경유1, 경유2, ...] — 도착이 두 번째로 먼저 옵니다.
-  // 지점 2개(경유 없음)  → /출발/도착/-/car     ("-" 는 경유지 없음 자리표시)
-  // 지점 3개 이상        → /출발/도착/경유/car  ("-" 없이 곧장 car)
-  var order=[cs[0], cs[cs.length-1]].concat(cs.slice(1,-1));
-  var nord =[names[0], names[names.length-1]].concat(names.slice(1,-1));
-  var segs=order.map(function(c,i){ return nvPoi(c,nord[i]); });
+  // 네이버 경로 주소는 언제나 네 칸입니다 — /출발/도착/경유지/이동수단
+  //   · 도착이 두 번째로 먼저 옵니다
+  //   · 경유지는 여러 곳이어도 한 칸에 ":" 로 이어 붙입니다 (칸을 나누면 조회가 실패합니다)
+  //   · 경유지가 없으면 그 칸에 "-" 를 넣습니다
   var s1=cs[0], s2=cs[cs.length-1];
-  var tail = cs.length===2 ? "/-/car" : "/car";
-  return "https://map.naver.com/p/directions/" + segs.join("/") + tail
+  var 출발=nvPoi(s1,names[0]);
+  var 도착=nvPoi(s2,names[names.length-1]);
+  var 경유 = cs.length>2
+    ? cs.slice(1,-1).map(function(c,i){ return nvPoi(c,names[i+1]); }).join(":")
+    : "-";
+  return "https://map.naver.com/p/directions/"+출발+"/"+도착+"/"+경유+"/car"
     + "?c=" + nvZoom(s1,s2) + ",0,0,0,dh";
 }
 
@@ -1911,7 +1913,7 @@ function opinetOpen(){
   capHelper("오피넷 조회 결과");
 
   $("ovxy").textContent = a.y+"-"+a.m+"-"+a.d+" ~ "+b.y+"-"+b.m+"-"+b.d
-    + " 일별 평균가 조회 결과를 열었습니다. 오른쪽 위 작은 창의 '현재 화면 캡처' 를 누르면 사진이 바로 들어옵니다.";
+    + " 일별 평균가 조회 결과를 열었습니다. 옆에 뜬 캡처 창의 '현재 화면 캡처' 를 누르면 화면 전체를 찍어 3단계로 바로 보냅니다.";
 }
 
 /* ----- 유가 모드 ----- */
@@ -1951,8 +1953,11 @@ var CAPWIN=null;
 function capHelper(이름){
   if(OFFLINE)return;
   try{
-    var w=380, h=250;
-    var lf=Math.max(0,screen.availWidth-w-20), tp=20;
+    // 브라우저가 '공유할 항목' 을 묻는 창이 이 창 안에 뜨므로
+    // 그 창이 잘리지 않을 만큼은 넓어야 합니다 (좁으면 목록이 안 보입니다)
+    var w=Math.min(660,Math.max(520,screen.availWidth-120));
+    var h=Math.min(640,Math.max(480,screen.availHeight-160));
+    var lf=Math.max(0,screen.availWidth-w-20), tp=30;
     CAPWIN=window.open("capture.html"+(이름?"?t="+encodeURIComponent(이름):""),
       "jacha_cap",
       "width="+w+",height="+h+",left="+lf+",top="+tp+",resizable=yes,scrollbars=no");
@@ -1987,7 +1992,7 @@ function ovWin(url, msg, 이름){
   if(!win){ $("ovxy").textContent="팝업이 차단되었습니다. 주소창 오른쪽에서 허용해 주세요."; return; }
   try{ win.focus(); }catch(e){}
   capHelper(이름);
-  $("ovxy").textContent=msg+" 오른쪽 위 작은 창의 '현재 화면 캡처' 를 누르면 사진이 바로 들어옵니다.";
+  $("ovxy").textContent=msg+" 옆에 뜬 캡처 창의 '현재 화면 캡처' 를 누르면 화면 전체를 찍어 3단계로 바로 보냅니다.";
 }
 function ovClose(){ qrStop(); capHelperClose(); $("ov").className="ov"; }
 
