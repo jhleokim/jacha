@@ -11,9 +11,8 @@
   3단계로 사진이 바로 들어갑니다.
 
   브라우저 보안 규칙상 '무엇을 캡처할지' 묻는 창은 건너뛸 수 없습니다.
-  대신 화면 전체를 기본으로 골라 두어 '공유' 한 번이면 끝나게 하고,
-  한 번 허용하면 그 뒤로는 묻지 않고 바로 찍히게 했습니다.
-  필요 없는 부분은 정산 화면 3단계에서 드래그로 잘라내면 됩니다.
+  대신 열려 있는 창 목록을 기본으로 보여 주어 증빙 화면만 골라 찍게 하고,
+  한 번 고르면 그 뒤로는 묻지 않고 같은 창을 바로 찍게 했습니다.
 -->
 <style>
 :root{--g:#137a54;--g-d:#0e6144;--ink:#17201d;--ink-2:#4a5854;--mu:#7c8b86;--ln:#dfe6e3}
@@ -38,14 +37,14 @@ button.sub:hover{background:#eef3f1}
 </head>
 <body>
 <h1>증빙 화면을 캡처하세요</h1>
-<p><span class="tgt" id="tgt">증빙 화면</span>을 띄워 둔 채 아래 버튼을 누르면
-화면 전체를 찍어 정산 화면 3단계로 바로 보냅니다.</p>
+<p>아래 버튼을 누르면 열려 있는 창 목록이 뜹니다.
+<span class="tgt" id="tgt">증빙 화면</span>을 골라 주시면 정산 화면 3단계로 바로 들어갑니다.</p>
 
 <button id="cap">현재 화면 캡처</button>
-<button class="sub" id="again" hidden>한 번 더 캡처 (묻지 않고 바로)</button>
+<button class="sub" id="again" hidden>같은 창 한 번 더 캡처 (묻지 않고 바로)</button>
 <p id="msg"></p>
-<p class="hint">처음 한 번은 브라우저가 "공유할 항목"을 묻습니다 — 화면 전체가 이미 골라져 있으니
-<b>공유</b>만 누르시면 됩니다. 그 뒤로는 묻지 않고 바로 찍힙니다.
+<p class="hint">처음 한 번은 브라우저가 "공유할 항목"을 묻습니다 — <b>창</b> 탭에서 증빙 화면을 고르고
+<b>공유</b>를 누르세요. 그 뒤로는 묻지 않고 같은 창이 바로 찍힙니다.
 필요 없는 부분은 정산 화면 3단계에서 드래그로 잘라내면 됩니다.</p>
 
 <script>
@@ -69,15 +68,21 @@ function 살아있나(){
   return !!(t&&t.readyState==="live");
 }
 
-function 화면잡기(){
+function 화면놓기(){
+  try{ if(STREAM)STREAM.getTracks().forEach(function(t){t.stop();}); }catch(e){}
+  STREAM=null; VIDEO=null; $("again").hidden=true;
+}
+
+function 화면잡기(새로){
+  if(새로)화면놓기();                 // '다른 창 고르기' 는 목록을 다시 띄웁니다
   if(살아있나())return Promise.resolve();
   if(!(navigator.mediaDevices&&navigator.mediaDevices.getDisplayMedia))
     return Promise.reject(new Error("이 브라우저에서는 화면 캡처를 쓸 수 없습니다"));
 
-  msg("브라우저가 '공유할 항목' 을 묻습니다. 화면 전체가 골라져 있으니 '공유' 를 누르세요.");
+  msg("브라우저가 '공유할 항목' 을 묻습니다. '창' 탭에서 증빙 화면을 고르고 '공유' 를 누르세요.");
   return navigator.mediaDevices.getDisplayMedia({
-    // 화면 전체를 기본으로 골라 둡니다 — 어느 창인지 찾지 않아도 됩니다
-    video:{ displaySurface:"monitor" },
+    // 열려 있는 창 목록을 기본으로 보여 줍니다 — 증빙 화면만 깔끔하게 찍힙니다
+    video:{ displaySurface:"window" },
     audio:false,
     selfBrowserSurface:"exclude",     // 이 캡처 창 자신은 목록에서 뺍니다
     surfaceSwitching:"exclude"
@@ -102,14 +107,14 @@ function 한장찍기(){
   return url;
 }
 
-function 캡처(){
+function 캡처(새로){
   $("cap").disabled=true; $("again").disabled=true;
-  화면잡기()
+  화면잡기(새로)
     .then(function(){ 한장찍기(); })
     .then(function(){
-      msg("가져왔습니다 — 정산 화면 3단계에 들어갔습니다. 더 찍으려면 아래 버튼을 누르세요.","ok");
+      msg("가져왔습니다 — 정산 화면 3단계에 들어갔습니다. 같은 창을 더 찍으려면 아래 버튼을 누르세요.","ok");
       $("again").hidden=false;
-      $("cap").textContent="현재 화면 다시 캡처";
+      $("cap").textContent="다른 창 고르기";
       try{ window.opener.focus(); }catch(e){}
     })
     ["catch"](function(e){
@@ -121,8 +126,9 @@ function 캡처(){
     ["finally"](function(){ $("cap").disabled=false; $("again").disabled=false; });
 }
 
-$("cap").addEventListener("click",캡처);
-$("again").addEventListener("click",캡처);
+// 위 버튼은 언제나 창 목록을 다시 띄우고, 아래 버튼은 고른 창을 그대로 다시 찍습니다
+$("cap").addEventListener("click",function(){ 캡처(true); });
+$("again").addEventListener("click",function(){ 캡처(false); });
 
 window.addEventListener("pagehide",function(){
   try{ if(STREAM)STREAM.getTracks().forEach(function(t){t.stop();}); }catch(e){}
