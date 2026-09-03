@@ -198,6 +198,16 @@ button.pin.err i{background:var(--r)}
 .cpbtn:hover svg{stroke:var(--g)}
 kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;border-radius:5px;
     padding:1px 6px;font-size:12.5px;font-family:var(--font)}
+/* 팝업 차단 안내 (증빙 화면·캡처 창이 팝업으로 열립니다) */
+#popbar{display:none;margin:0 0 20px;padding:14px 16px;border-radius:var(--radius);
+  border:1px solid #F0C9C7;background:#FDF6F5}
+#popbar.on{display:block}
+#popbar.ok{border-color:var(--g-line);background:var(--g-tint)}
+#popbar b{color:var(--r)}
+#popbar.ok b{color:#00614F}
+#popbar p{margin:6px 0 0;font-size:12.5px;color:var(--ink-2);line-height:1.65}
+#popbar ol{margin:8px 0 0;padding-left:19px;font-size:12.5px;color:var(--ink-2);line-height:1.75}
+#popbar .row{margin-top:11px}
 </style>
 </head>
 <body>
@@ -205,6 +215,21 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 
 <h1>자차보조금 정산 <span class="badge" id="mode">확인 중…</span><span class="ver" id="ver"></span></h1>
 <p class="lead" id="lead">입력한 내용은 브라우저 안에서만 처리됩니다.</p>
+
+<div id="popbar">
+<b id="poptitle">팝업이 차단되어 있습니다</b>
+<p id="popmsg">지도·하이패스·오피넷 증빙 화면과 캡처 창이 <b>팝업</b>으로 열립니다.
+차단된 상태면 버튼을 눌러도 창이 뜨지 않습니다.</p>
+<ol id="popsteps">
+<li>아래 <b>팝업 허용 확인</b> 을 누릅니다.</li>
+<li>주소창 오른쪽 끝에 뜨는 <b>팝업 차단됨</b> 아이콘을 누릅니다.</li>
+<li><b>항상 허용</b> 을 고르고 <b>완료</b> 를 누릅니다. (이 안내는 저절로 사라집니다)</li>
+</ol>
+<div class="row">
+<button class="p" id="poptry">팝업 허용 확인</button>
+<button id="popagain">다시 검사</button>
+</div>
+</div>
 
 <section>
 <h2>출장 정보</h2>
@@ -1913,7 +1938,7 @@ function opinetOpen(){
   capHelper("오피넷 조회 결과");
 
   $("ovxy").textContent = a.y+"-"+a.m+"-"+a.d+" ~ "+b.y+"-"+b.m+"-"+b.d
-    + " 일별 평균가 조회 결과를 열었습니다. 옆에 뜬 캡처 창의 '현재 화면 캡처' 를 누르면 화면 전체를 찍어 3단계로 바로 보냅니다.";
+    + " 일별 평균가 조회 결과를 열었습니다. 옆에 뜬 캡처 창의 '현재 화면 캡처' 를 누르면 창 목록에서 골라 3단계로 바로 보냅니다.";
 }
 
 /* ----- 유가 모드 ----- */
@@ -1944,6 +1969,99 @@ function ovFillOil(){
       + "조회 기간 "+_a.y+"-"+_a.m+"-"+_a.d+" ~ "+_b.y+"-"+_b.m+"-"+_b.d;
   });
 }
+
+/* ---------- 팝업 차단 확인 ---------- */
+// 증빙 화면과 캡처 창이 둘 다 팝업이라, 이 사이트가 '팝업 허용' 으로 등록되어
+// 있지 않으면 한 번의 클릭으로 두 창을 함께 띄우다가 하나가 막힐 수 있습니다.
+// 브라우저는 차단 여부를 알려주는 방법이 없어, 실제로 작은 창을 열어 봅니다.
+//   · 허용된 사이트  → 클릭 없이 연 창도 열립니다
+//   · 그 밖의 경우   → null 이 돌아옵니다
+var POP_KEY="jacha_popup_ok_v1", POP_최근=0;
+
+function 시험창(w,h){
+  var win=null;
+  try{ win=window.open("about:blank","jacha_poptest","width="+w+",height="+h+",left=0,top=0"); }catch(e){ win=null; }
+  return win;
+}
+function 시험창닫기(win){ try{ if(win&&!win.closed)win.close(); }catch(e){} }
+
+function 팝업기억(ok){
+  try{ ok ? localStorage.setItem(POP_KEY,String(Date.now())) : localStorage.removeItem(POP_KEY); }catch(e){}
+}
+function 팝업최근허용(){
+  try{
+    var t=+(localStorage.getItem(POP_KEY)||0);
+    return t>0 && (Date.now()-t) < 7*24*60*60*1000;   // 일주일은 다시 묻지 않습니다
+  }catch(e){ return false; }
+}
+
+function 팝업숨김(){ $("popbar").className=""; }
+
+function 팝업막힘안내(){
+  $("popbar").className="on";
+  $("poptitle").textContent="팝업 허용이 필요합니다";
+  $("popmsg").innerHTML="지도·하이패스·오피넷 증빙 화면과 <b>캡처 창</b>이 팝업으로 함께 열립니다. "
+    + "허용해 두지 않으면 둘 중 하나가 막혀 캡처 버튼이 뜨지 않습니다.";
+  $("popsteps").style.display="";
+}
+function 팝업허용안내(){
+  $("popbar").className="on ok";
+  $("poptitle").textContent="팝업이 허용되어 있습니다";
+  $("popmsg").textContent="증빙 화면과 캡처 창이 정상적으로 열립니다.";
+  $("popsteps").style.display="none";
+  setTimeout(팝업숨김,4000);
+}
+
+// 클릭 없이 열어 보는 조용한 검사 — '팝업 허용' 등록 여부를 알 수 있습니다
+function 팝업검사(){
+  if(OFFLINE)return true;
+  var w=시험창(140,100);
+  시험창닫기(w);
+  var ok=!!w;
+  팝업기억(ok);
+  return ok;
+}
+
+function 팝업초기검사(){
+  if(OFFLINE)return;
+  POP_최근=Date.now();
+  if(팝업최근허용())return;              // 최근에 확인했으면 창을 띄우지 않습니다
+  if(!팝업검사())팝업막힘안내();
+}
+
+// 설정을 바꾸고 돌아오면 스스로 다시 확인해 안내를 거둡니다
+window.addEventListener("focus",function(){
+  if(OFFLINE)return;
+  if($("popbar").className.indexOf("on")<0)return;
+  if(Date.now()-POP_최근<1500)return;
+  POP_최근=Date.now();
+  if(팝업검사())팝업허용안내();
+});
+
+// 실제 흐름대로 창 두 개를 한 번에 열어 봅니다.
+// 막히면 이 클릭 때문에 주소창 오른쪽에 차단 아이콘이 떠서 거기서 허용할 수 있습니다.
+$("poptry").addEventListener("click",function(){
+  var a=시험창(160,120), b=시험창(160,120);
+  var 둘다=!!(a&&b);
+  시험창닫기(a); 시험창닫기(b);
+  POP_최근=Date.now();
+  if(둘다 && 팝업검사()){ 팝업허용안내(); return; }
+  팝업막힘안내();
+  $("popmsg").innerHTML=둘다
+    ? "지금은 열렸지만 <b>항상 허용</b> 으로 등록해 두는 편이 안전합니다. "
+      + "주소창 오른쪽 아이콘에서 이 사이트를 허용해 주세요."
+    : "창이 막혔습니다. <b>주소창 오른쪽 끝</b> 에 뜬 팝업 차단 아이콘을 눌러 "
+      + "<b>항상 허용</b> 을 골라 주세요.";
+});
+$("popagain").addEventListener("click",function(){
+  POP_최근=Date.now();
+  if(팝업검사())팝업허용안내();
+  else{
+    팝업막힘안내();
+    $("popmsg").innerHTML="아직 허용되지 않았습니다. <b>주소창 오른쪽 끝</b> 의 팝업 차단 아이콘에서 "
+      + "<b>항상 허용</b> 을 고른 뒤 다시 눌러 주세요.";
+  }
+});
 
 /* ----- 공용 ----- */
 // 증빙 화면은 다른 회사 사이트라 그 안에 버튼을 넣을 수 없습니다.
@@ -1989,10 +2107,17 @@ function ovWin(url, msg, 이름){
   var tp=Math.max(0,Math.round((screen.availHeight-h)/2));
   var win=window.open(url,"jacha_ref",
     "width="+w+",height="+h+",left="+lf+",top="+tp+",resizable=yes,scrollbars=yes");
-  if(!win){ $("ovxy").textContent="팝업이 차단되었습니다. 주소창 오른쪽에서 허용해 주세요."; return; }
+  if(!win){
+    팝업기억(false); 팝업막힘안내();
+    $("ovxy").textContent="팝업이 차단되어 증빙 화면을 열지 못했습니다. "
+      + "이 창을 닫고 화면 맨 위의 '팝업 허용이 필요합니다' 안내대로 허용해 주세요.";
+    return;
+  }
   try{ win.focus(); }catch(e){}
   capHelper(이름);
-  $("ovxy").textContent=msg+" 옆에 뜬 캡처 창의 '현재 화면 캡처' 를 누르면 화면 전체를 찍어 3단계로 바로 보냅니다.";
+  $("ovxy").textContent = msg + (CAPWIN
+    ? " 옆에 뜬 캡처 창의 '현재 화면 캡처' 를 누르면 창 목록에서 골라 3단계로 바로 보냅니다."
+    : " 캡처 창은 팝업이 막혀 열리지 않았습니다 — 아래 '화면 캡처' 를 쓰시거나 팝업을 허용해 주세요.");
 }
 function ovClose(){ qrStop(); capHelperClose(); $("ov").className="ov"; }
 
@@ -2280,6 +2405,7 @@ $("fszv").textContent=PT.body+" pt";
 $("iszv").textContent="100%";
 $("date").value=new Date().toISOString().slice(0,10);
 pinInit();
+팝업초기검사();
 focusSlot("map");
 setMode();
 draw();
