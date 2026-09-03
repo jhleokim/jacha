@@ -7,32 +7,46 @@
 <!--
   증빙 화면(네이버 지도·하이패스·오피넷 등)은 다른 회사 사이트라
   그 화면 안에 버튼을 넣을 수가 없습니다. 그래서 캡처 버튼만 담은
-  이 작은 창을 옆에 같이 띄웁니다. 여기서 캡처하면 원래 정산 화면의
+  이 창을 옆에 같이 띄웁니다. 여기서 캡처하면 원래 정산 화면의
   3단계로 사진이 바로 들어갑니다.
+
+  브라우저 보안 규칙상 '무엇을 캡처할지' 묻는 창은 건너뛸 수 없습니다.
+  대신 화면 전체를 기본으로 골라 두어 '공유' 한 번이면 끝나게 하고,
+  한 번 허용하면 그 뒤로는 묻지 않고 바로 찍히게 했습니다.
+  필요 없는 부분은 정산 화면 3단계에서 드래그로 잘라내면 됩니다.
 -->
 <style>
 :root{--g:#137a54;--g-d:#0e6144;--ink:#17201d;--ink-2:#4a5854;--mu:#7c8b86;--ln:#dfe6e3}
 *{box-sizing:border-box}
-body{margin:0;padding:16px;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Malgun Gothic","맑은 고딕",sans-serif;
+body{margin:0;padding:18px;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Malgun Gothic","맑은 고딕",sans-serif;
   color:var(--ink);background:#f7f9f8}
-h1{font-size:14px;margin:0 0 4px}
-p{margin:0 0 12px;font-size:12px;color:var(--ink-2)}
+h1{font-size:15px;margin:0 0 5px}
+p{margin:0 0 13px;font-size:12.5px;color:var(--ink-2)}
 .tgt{font-weight:600;color:var(--g-d)}
-button{width:100%;padding:13px 16px;font-size:15px;font-weight:600;color:#fff;background:var(--g);
+button{width:100%;padding:14px 16px;font-size:15px;font-weight:600;color:#fff;background:var(--g);
   border:none;border-radius:9px;cursor:pointer}
 button:hover{background:var(--g-d)}
 button:disabled{background:var(--mu);cursor:default}
-#msg{margin:11px 0 0;font-size:12px;color:var(--ink-2);min-height:32px}
+button.sub{margin-top:9px;padding:10px 14px;font-size:13px;font-weight:500;
+  color:var(--ink-2);background:#fff;border:1px solid var(--ln)}
+button.sub:hover{background:#eef3f1}
+#msg{margin:13px 0 0;font-size:12.5px;color:var(--ink-2);min-height:36px}
 #msg.warn{color:#c0392b}
 #msg.ok{color:var(--g-d);font-weight:600}
+.hint{margin:14px 0 0;font-size:11.5px;color:var(--mu);line-height:1.5}
 </style>
 </head>
 <body>
 <h1>증빙 화면을 캡처하세요</h1>
-<p><span class="tgt" id="tgt">증빙 화면</span>을 확인한 뒤 아래 버튼을 누르고,
-목록에서 <b>그 창</b>을 고르면 정산 화면으로 사진이 바로 들어갑니다.</p>
+<p><span class="tgt" id="tgt">증빙 화면</span>을 띄워 둔 채 아래 버튼을 누르면
+화면 전체를 찍어 정산 화면 3단계로 바로 보냅니다.</p>
+
 <button id="cap">현재 화면 캡처</button>
+<button class="sub" id="again" hidden>한 번 더 캡처 (묻지 않고 바로)</button>
 <p id="msg"></p>
+<p class="hint">처음 한 번은 브라우저가 "공유할 항목"을 묻습니다 — 화면 전체가 이미 골라져 있으니
+<b>공유</b>만 누르시면 됩니다. 그 뒤로는 묻지 않고 바로 찍힙니다.
+필요 없는 부분은 정산 화면 3단계에서 드래그로 잘라내면 됩니다.</p>
 
 <script>
 var $=function(i){return document.getElementById(i);};
@@ -46,47 +60,72 @@ if(!window.opener||window.opener.closed){
   $("cap").disabled=true;
 }
 
-$("cap").addEventListener("click",function(){
-  if(!(navigator.mediaDevices&&navigator.mediaDevices.getDisplayMedia)){
-    msg("이 브라우저에서는 화면 캡처를 쓸 수 없습니다. 정산 화면의 '파일에서 고르기' 를 쓰세요.","warn");
-    return;
-  }
-  $("cap").disabled=true;
-  msg("어느 창을 가져올지 고르는 창이 떴습니다. 방금 본 화면을 고르고 공유를 누르세요.");
+// 한 번 허용받은 화면은 계속 들고 있다가 다시 찍을 때 그대로 씁니다.
+// (브라우저가 '공유할 항목' 을 다시 묻지 않습니다)
+var STREAM=null, VIDEO=null;
 
-  navigator.mediaDevices.getDisplayMedia({video:{displaySurface:"window"},audio:false})
-    .then(function(stream){
-      var v=document.createElement("video");
-      v.srcObject=stream; v.muted=true; v.playsInline=true;
-      return v.play()
-        .then(function(){ return new Promise(function(r){ setTimeout(function(){r(v);},350); }); })
-        .then(function(vv){
-          var c=document.createElement("canvas");
-          c.width=vv.videoWidth; c.height=vv.videoHeight;
-          if(!c.width||!c.height)throw new Error("빈 화면을 받았습니다");
-          c.getContext("2d").drawImage(vv,0,0,c.width,c.height);
-          stream.getTracks().forEach(function(t){t.stop();});
-          return c.toDataURL("image/png");
-        },function(e){
-          stream.getTracks().forEach(function(t){t.stop();});
-          throw e;
-        });
-    })
-    .then(function(url){
-      window.opener.postMessage({t:"jacha-cap", url:url}, location.origin);
-      msg("가져왔습니다 — 정산 화면 3단계에 들어갔습니다. 이 창은 곧 닫힙니다.","ok");
-      setTimeout(function(){
-        try{ window.opener.focus(); }catch(e){}
-        window.close();
-      },1200);
+function 살아있나(){
+  var t=STREAM&&STREAM.getVideoTracks()[0];
+  return !!(t&&t.readyState==="live");
+}
+
+function 화면잡기(){
+  if(살아있나())return Promise.resolve();
+  if(!(navigator.mediaDevices&&navigator.mediaDevices.getDisplayMedia))
+    return Promise.reject(new Error("이 브라우저에서는 화면 캡처를 쓸 수 없습니다"));
+
+  msg("브라우저가 '공유할 항목' 을 묻습니다. 화면 전체가 골라져 있으니 '공유' 를 누르세요.");
+  return navigator.mediaDevices.getDisplayMedia({
+    // 화면 전체를 기본으로 골라 둡니다 — 어느 창인지 찾지 않아도 됩니다
+    video:{ displaySurface:"monitor" },
+    audio:false,
+    selfBrowserSurface:"exclude",     // 이 캡처 창 자신은 목록에서 뺍니다
+    surfaceSwitching:"exclude"
+  }).then(function(s){
+    STREAM=s;
+    VIDEO=document.createElement("video");
+    VIDEO.srcObject=s; VIDEO.muted=true; VIDEO.playsInline=true;
+    s.getVideoTracks()[0].addEventListener("ended",function(){ STREAM=null; VIDEO=null; $("again").hidden=true; });
+    return VIDEO.play().then(function(){
+      return new Promise(function(r){ setTimeout(r,300); });   // 첫 프레임을 기다립니다
+    });
+  });
+}
+
+function 한장찍기(){
+  var c=document.createElement("canvas");
+  c.width=VIDEO.videoWidth; c.height=VIDEO.videoHeight;
+  if(!c.width||!c.height)throw new Error("빈 화면을 받았습니다");
+  c.getContext("2d").drawImage(VIDEO,0,0,c.width,c.height);
+  var url=c.toDataURL("image/png");
+  window.opener.postMessage({t:"jacha-cap", url:url}, location.origin);
+  return url;
+}
+
+function 캡처(){
+  $("cap").disabled=true; $("again").disabled=true;
+  화면잡기()
+    .then(function(){ 한장찍기(); })
+    .then(function(){
+      msg("가져왔습니다 — 정산 화면 3단계에 들어갔습니다. 더 찍으려면 아래 버튼을 누르세요.","ok");
+      $("again").hidden=false;
+      $("cap").textContent="현재 화면 다시 캡처";
+      try{ window.opener.focus(); }catch(e){}
     })
     ["catch"](function(e){
       var n=(e&&e.name)||"";
       msg(n==="NotAllowedError"
         ? "캡처를 취소했거나 권한이 거부되었습니다. 다시 눌러 보세요."
         : "캡처하지 못했습니다 — "+((e&&e.message)||n), "warn");
-      $("cap").disabled=false;
-    });
+    })
+    ["finally"](function(){ $("cap").disabled=false; $("again").disabled=false; });
+}
+
+$("cap").addEventListener("click",캡처);
+$("again").addEventListener("click",캡처);
+
+window.addEventListener("pagehide",function(){
+  try{ if(STREAM)STREAM.getTracks().forEach(function(t){t.stop();}); }catch(e){}
 });
 </script>
 </body>
