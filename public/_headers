@@ -1,0 +1,13 @@
+# 화면 파일에 붙는 보호 머리말입니다. 워커를 거치지 않고 정적 자산으로
+# 나가는 경로(/, /capture.html …)에도 그대로 적용됩니다.
+#   · 이 화면은 어디에도 끼워 넣을 일이 없으므로 iframe 을 막습니다
+#   · 증빙 사진은 data:/blob: 로 캔버스에 넣습니다
+#   · 조회는 우리 워커로만 나가고(connect-src 'self'),
+#     오피넷 조회화면만 예외로 폼을 opinet.co.kr 로 보냅니다
+#   · 화면 캡처(display-capture)는 이 화면에서 써야 하므로 열어 둡니다
+#   · 화면·스타일이 HTML 안에 그대로 들어 있어 inline 은 허용해야 합니다
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), display-capture=(self)
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; form-action 'self' https://www.opinet.co.kr; frame-ancestors 'none'; base-uri 'self'; object-src 'none'
