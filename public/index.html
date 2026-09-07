@@ -156,6 +156,14 @@ button.pin.err i{background:var(--r)}
 .mo header,.mo footer{flex-shrink:0}
 .mo footer{padding:15px 22px;border-top:1px solid var(--ln);display:flex;gap:9px;
            flex-wrap:wrap;justify-content:flex-end;background:#FAFCFB;border-radius:0 0 14px 14px}
+@media(max-width:600px){
+  .mo footer{display:grid;grid-template-columns:minmax(0,1fr) auto;padding:12px 16px;gap:8px}
+  .mo footer .file-pick{grid-column:1/-1;min-height:44px;white-space:nowrap;padding:8px 12px}
+  .mo footer button{min-height:44px}
+  .mo .ovstep{flex-wrap:wrap}
+  .mo .ovstep>span{flex-shrink:0}
+  .mo .ovstep em{flex-basis:100%;padding-left:30px}
+}
 .xbtn{width:31px;height:31px;padding:0;border-radius:50%;line-height:1;font-size:17px;color:var(--mu)}
 .adr{border:1px solid var(--ln);border-radius:var(--radius);overflow:hidden;margin:0 0 16px}
 .adr div{display:flex;justify-content:space-between;align-items:center;gap:11px;
