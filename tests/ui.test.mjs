@@ -104,3 +104,66 @@ test('oil response arriving after clear cannot restore erased data',async()=>{
   const pending=a.c.유가자동조회();a.e.get('clr').click();resolve({price:1500,date:'2026-09-06'});
   await assert.rejects(pending,/입력 조건/);assert.equal(a.e.get('price').value,'');assert.equal(a.saved.has('jacha_draft_v1'),false);
 });
+
+test('one click fills price and attaches one evidence page with raw value and actual date',async()=>{
+  const a=app();valid(a);a.e.get('date').value='2026-09-07';
+  a.c.lookupOil가까운=async()=>({price:1652.48,date:'2026-09-06',대체:true});
+  await a.c.유가증빙자동첨부();
+  assert.equal(a.c.SHOT.oil.length,1);assert.equal(a.e.get('price').value,'1652');
+  assert.match(a.e.get('stat2').textContent,/첨부 완료/);
+  assert.ok(a.c.SHOT.oil[0].use.texts.some(t=>t.text.includes('1652.48')));
+  assert.ok(a.c.SHOT.oil[0].use.texts.some(t=>t.text.includes('2026-09-06')));
+  assert.equal(a.c.imagePages().length,1);assert.equal(a.e.get('oilshot').disabled,false);
+  await a.c.유가증빙자동첨부();assert.equal(a.c.SHOT.oil.length,1);
+});
+test('duplicate clicks share one request; changed inputs discard pending evidence',async()=>{
+  const a=app();valid(a);a.e.get('date').value='2026-09-07';let resolve,calls=0;
+  a.c.lookupOil가까운=()=>{calls++;return new Promise(r=>resolve=r);};
+  const p=a.c.유가증빙자동첨부();await a.c.유가증빙자동첨부();assert.equal(calls,1);
+  a.e.get('date').value='2026-09-05';a.e.get('date').emit('input');
+  resolve({price:1500,date:'2026-09-06'});await p;
+  assert.equal(a.c.SHOT.oil.length,0);assert.equal(a.e.get('price').value,'1500');
+  assert.equal(a.e.get('oilshot').disabled,false);
+});
+test('changing date, fuel or price removes generated evidence but preserves manual attachments',async()=>{
+  for(const k of ['date','oil','price']){
+    const a=app();valid(a);a.e.get('date').value='2026-09-07';
+    a.c.lookupOil가까운=async()=>({price:1652,date:'2026-09-06'});
+    await a.c.유가증빙자동첨부();a.e.get(k).emit('input');assert.equal(a.c.SHOT.oil.length,0);
+    a.c.SHOT.oil=[{use:{width:100,height:100}}];a.e.get(k).emit('input');assert.equal(a.c.SHOT.oil.length,1);
+  }
+});
+test('failed or invalid lookup creates no evidence and allows retry',async()=>{
+  for(const result of [null,{price:NaN,date:'2026-09-06'},{price:1500,date:'invalid'},{price:1500,date:'2026-09-09'}]){
+    const a=app();valid(a);a.e.get('date').value='2026-09-07';
+    a.c.lookupOil가까운=async()=>{if(!result)throw new Error('조회 실패');return result;};
+    await a.c.유가증빙자동첨부();assert.equal(a.c.SHOT.oil.length,0);
+    assert.equal(a.e.get('oilshot').disabled,false);assert.equal(a.e.get('price').value,'1500');
+    assert.match(a.e.get('stat2').textContent,/다시 시도/);
+  }
+});
+test('clear during one click lookup never attaches stale evidence',async()=>{
+  const a=app();valid(a);a.e.get('date').value='2026-09-07';let resolve;
+  a.c.lookupOil가까운=()=>new Promise(r=>resolve=r);
+  const p=a.c.유가증빙자동첨부();a.e.get('clr').click();resolve({price:1500,date:'2026-09-06'});await p;
+  assert.equal(a.c.SHOT.oil.length,0);assert.equal(a.e.get('price').value,'');
+});
+test('oil lookup selects the requested date and rejects malformed prices',async()=>{
+  const a=app();
+  a.c.jget=async()=>({RESULT:{OIL:[{DATE:'20260907',PRICE:'9999'},{DATE:'20260906',PRICE:'1652.48'}]}});
+  assert.equal((await a.c.lookupOil('2026-09-06','휘발유')).price,1652.48);
+  a.c.jget=async()=>({RESULT:{OIL:[{DATE:'20260906',PRICE:'1652oops'}]}});
+  await assert.rejects(a.c.lookupOil('2026-09-06','휘발유'),/올바르지/);
+});
+test('transport failures do not retry seven different dates',async()=>{
+  const a=app();let calls=0;
+  a.c.오늘문자열=()=> '2026-09-08';
+  a.c.lookupOil=async()=>{calls++;throw new Error('HTTP 503');};
+  await assert.rejects(a.c.lookupOil가까운('2026-09-07','휘발유'),/503/);assert.equal(calls,1);
+});
+test('route starts with prominent address action then promotes map after confirmation',()=>{
+  const a=app();assert.equal(a.e.get('chkaddr').className,'p route-action');
+  assert.equal(a.e.get('omap').className,'p2 route-action');
+  a.c.확정좌표=()=>[{x:127,y:37}];a.c.경로단계갱신(true);
+  assert.equal(a.e.get('omap').className,'p route-action');assert.equal(a.e.get('chkaddr').className,'done route-action');
+});

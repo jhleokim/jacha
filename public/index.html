@@ -214,6 +214,14 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 #draftbar b{color:#00614F}
 #draftbar p{margin:5px 0 0;font-size:12.5px;color:var(--ink-2);line-height:1.65}
 #draftbar .row{margin-top:10px}
+/* Clear next actions, including keyboard and mobile use. */
+.route-action{min-height:52px;padding:14px 22px;font-weight:700;font-size:15px;border-radius:12px}
+#omap{width:100%;min-height:58px;text-align:left;display:flex;align-items:center;justify-content:space-between}
+#chkaddr.p,#omap.p{box-shadow:0 5px 14px rgba(0,100,78,.18)}
+button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
+#oilshot{min-height:36px;color:#00614f;border-color:#7db9a7;background:#edf8f3;font-weight:600}
+@media(max-width:540px){#chkaddr{width:100%}.route-action{font-size:14px}}
+@media(prefers-reduced-motion:reduce){button.next{animation:none}}
 </style>
 </head>
 <body>
@@ -282,12 +290,12 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 <input id="rt" type="checkbox" hidden>
 <p class="note" id="rtnote" style="display:none"></p>
 <div class="row">
-<button id="chkaddr">주소 확인</button>
-<span class="cue" id="nextcue"></span>
+<button id="chkaddr" class="p route-action">① 주소 확인하고 다음으로 →</button>
+<span class="cue" id="nextcue" aria-live="polite"></span>
 </div>
 <div id="addrbox" class="addrbox"></div>
 <div class="row" id="omaprow">
-<button class="p2" id="omap">지도에서 경로확인하기 (증빙)</button>
+<button class="p2 route-action" id="omap">② 지도에서 경로 · 거리 확인 →</button>
 </div>
 <p class="note" id="hint1">지도에서 경로를 조회해 <b>화면을 캡처</b>하세요.
 주행거리 칸에는 <b>실제로 달린 총 거리</b>가 들어갑니다 — 왕복이면 지도에서 확인한 편도 거리에
@@ -304,7 +312,8 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 <div>
 <div class="fh crowded"><label for="price">유가 (원/L)</label>
 <span class="fhbtns">
-<button type="button" class="pin" id="oilshot"><i></i>증빙</button>
+<button type="button" class="pin" id="oilshot"><i></i>증빙 자동 첨부</button>
+<button type="button" class="mini" id="oilmanual">직접 확인</button>
 </span></div>
 <input id="price" type="number" step="1" min="0" placeholder="1652"></div>
 <div>
@@ -320,8 +329,8 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 </span></div>
 <input id="park" type="number" step="10" min="0" value="0"></div>
 </div>
-<p class="note" id="hint2">유가 옆 <b>증빙</b>을 누르면 <b>출장일자</b>와 <b>유종</b> 기준 오피넷 전국 평균 유가를 바로 조회해 채우고, 증빙 화면도 함께 열어 줍니다.</p>
-<p class="note" id="stat2"></p>
+<p class="note" id="hint2">유가 옆 <b>증빙 자동 첨부</b>를 누르면 유가 입력부터 증빙 첨부까지 한 번에 완료됩니다. 실제 오피넷 조회값·기준일·출처를 담은 이미지로, 사이트 화면 캡처는 아닙니다.</p>
+<p class="note" id="stat2" role="status" aria-live="polite"></p>
 <p class="note">조회가 안 되면 지도·오피넷에서 확인한 값을 직접 넣으셔도 됩니다.</p>
 </section>
 
@@ -356,7 +365,7 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 </details>
 
 <details id="dtShot">
-<summary>증빙 캡처 붙이기 (선택)</summary>
+<summary>첨부된 증빙 · 캡처 추가 (선택)</summary>
 <div class="body">
 <p class="note" style="margin-top:0">지도나 오피넷 화면을 <kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> 로 캡처한 뒤,
 아래 칸을 클릭하고 <kbd>Ctrl</kbd>+<kbd>V</kbd> 를 누르세요. (Mac은 <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>4</kbd>)</p>
@@ -383,7 +392,7 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 </div>
 
 <div class="slot" id="s_oil">
-<h3>유가 캡처 <span id="t_oil">비어 있음</span></h3>
+<h3>유가 증빙 <span id="t_oil">비어 있음</span></h3>
 <div class="drop" id="d_oil">클릭 후 <b>Ctrl+V</b> · 또는 아래에서 파일 선택</div>
 <input type="file" accept="image/*" id="f_oil" style="margin-top:7px">
 <div id="e_oil"></div>
@@ -500,7 +509,7 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 <script src="config.js" onerror="void 0"></script>
 <script>
 "use strict";
-var VERSION="v5.5";   // 화면을 고칠 때마다 올립니다 (사용자가 반영 여부를 확인하는 표시)
+var VERSION="v5.6";   // 화면을 고칠 때마다 올립니다 (사용자가 반영 여부를 확인하는 표시)
 var G="#009178", G_DK="#00705F", R="#DC231E",
     // 증빙 서식(캔버스)은 결재 문서 관행에 맞춰 맑은 고딕으로 고정합니다.
     FONT='"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif';
@@ -976,7 +985,7 @@ function drawPage1(cv){
 }
 
 /* ----- 2장부터: 이미지 한 장씩 ----- */
-var SLOTLABEL={map:"경로 조회 화면", oil:"유가 조회 화면",
+var SLOTLABEL={map:"경로 조회 화면", oil:"유가 조회 증빙",
                toll:"통행료 증빙", park:"주차료 증빙"};
 
 function imagePages(){
@@ -1189,9 +1198,13 @@ function lookupOil(date,fuel){
   var cd=(FUEL[fuel]||FUEL["휘발유"])[1];
   return jget("/opinet/price?prodcd="+cd+"&date="+(date||"").replace(/-/g,""))
     .then(function(d){
-      var row=((d.RESULT||{}).OIL||[])[0];
-      if(!row || !(parseFloat(row.PRICE)>0) || !Number.isFinite(parseFloat(row.PRICE)))throw new Error("해당 날짜의 유가가 없습니다 (오피넷은 최근 7일만 제공)");
-      return {price:parseFloat(row.PRICE), date:row.DATE||date};
+      var rows=d&&d.RESULT&&d.RESULT.OIL;
+      if(!Array.isArray(rows))throw new Error("오피넷 응답 형식을 확인할 수 없습니다");
+      var row=rows.find(function(r){return r&&String(r.DATE).replace(/-/g,"")===date.replace(/-/g,"")&&(!r.PRODCD||r.PRODCD===cd);});
+      if(!row){var e=new Error("해당 날짜의 유가가 없습니다 (오피넷은 최근 7일만 제공)");e.noOilData=true;throw e;}
+      var price=Number(row.PRICE);
+      if(!Number.isFinite(price)||price<=0)throw new Error("오피넷 가격이 올바르지 않습니다");
+      return {price:price, date:String(row.DATE)};
     });
 }
 
@@ -1232,7 +1245,8 @@ function lookupOil가까운(date,fuel){
     return lookupOil(d,fuel).then(function(v){
       var 쓴날=(v.date||"").replace(/(\d{4})(\d{2})(\d{2})/,"$1-$2-$3")||d;
       return {price:v.price, date:쓴날, 대체:쓴날!==date};
-    },function(){
+    },function(e){
+      if(!e.noOilData)throw e; // 권한·통신 오류는 날짜를 바꿔 반복 호출하지 않습니다.
       return 한번(날짜빼기(d,1));
     });
   }
@@ -1333,7 +1347,7 @@ $("chkaddr").addEventListener("click",function(){
   var items=주소항목();
   if(!items.length){ alert("주소를 먼저 입력하세요."); return; }
   $("chkaddr").disabled=true;
-  $("chkaddr").className=""; $("chkaddr").textContent="확인 중…";
+  $("chkaddr").className="p route-action"; $("chkaddr").textContent="주소 확인 중…";
   경로단계=null;
   $("addrbox").className="addrbox on";
   $("addrbox").innerHTML='<div class="arow">주소를 확인하는 중…</div>';
@@ -1441,18 +1455,18 @@ function 경로단계갱신(강제){
 
   var ok=$("chkaddr"), map=$("omap"), cue=$("nextcue");
   if(상태==="확정"){
-    ok.className="done";
+    ok.className="done route-action";
     ok.innerHTML='<span class="chk">✓</span>주소 확인됨';
-    map.className="p"+(지도열어봤다?"":" next");
-    map.innerHTML='지도에서 경로확인하기 (증빙)<span class="arw">→</span>';
+    map.className="p route-action";
+    map.innerHTML='② 지도에서 경로 · 거리 확인<span class="arw">→</span>';
     cue.className="cue on";
     cue.textContent="주소가 정해졌습니다 · 다음은 지도에서 경로 확인";
     return;
   }
 
-  ok.className=""; ok.textContent="주소 확인";
-  map.className="p2"; map.innerHTML="지도에서 경로확인하기 (증빙)";
-  if(상태==="처음"){ cue.className="cue"; cue.textContent=""; return; }
+  ok.className="p route-action"; ok.textContent="① 주소 확인하고 다음으로 →";
+  map.className="p2 route-action"; map.innerHTML="② 지도에서 경로 · 거리 확인";
+  if(상태==="처음"){ cue.className="cue on"; cue.textContent="출발지·도착지를 입력한 뒤 주소를 확인하세요"; return; }
   cue.className="cue on wait";
   cue.textContent = 상태==="고르는중" ? "아래에서 주소를 골라 주세요"
                   : 상태==="못찾음"   ? "찾지 못한 주소가 있습니다 · 도로명으로 다시 넣어 보세요"
@@ -1492,6 +1506,9 @@ function 유가자동조회(알림){
   return lookupOil가까운(d,f).then(function(v){
     if(requestId!==OIL_REQUEST || d!==$("date").value || f!==$("oil").value)
       throw new Error("입력 조건이 바뀌어 이전 조회 결과를 반영하지 않았습니다");
+    if(!Number.isFinite(v.price)||v.price<=0||!/^\d{4}-\d{2}-\d{2}$/.test(v.date)||v.date>d)
+      throw new Error("유가 조회 결과의 가격 또는 기준일을 확인할 수 없습니다");
+    유가증빙제거();
     var 값=Math.round(v.price);
     $("price").value=값;
     OIL_OK={d:d,f:f,date:v.date};
@@ -1499,7 +1516,7 @@ function 유가자동조회(알림){
     $("stat2").textContent=f+" "+KO(값)+" 원/L  ·  "+v.date+" 전국 평균  ·  출처 오피넷"
       + (v.대체?"  ·  출장일 당일 값은 아직 공개 전이라 가장 가까운 날짜입니다":"");
     초안즉시저장(); draw();
-    return {값:값, 날짜:v.date, 유종:f, 대체:v.대체};
+    return {값:값, 원값:v.price, 출장일:d, 날짜:v.date, 유종:f, 대체:v.대체};
   },function(e){
     if(requestId!==OIL_REQUEST)throw e;
     OIL_OK=null;
@@ -1831,7 +1848,7 @@ function qrThumbs(){
     card.style.cssText="position:relative;width:64px;height:64px;"
       +"border:1px solid var(--ln);border-radius:8px;overflow:hidden;background:#fff";
     var img=document.createElement("img");
-    img.src=it.use.src;
+    img.src=it.use.src || it.use.toDataURL("image/png");
     img.style.cssText="width:100%;height:100%;object-fit:cover;display:block";
     card.appendChild(img);
     var del=document.createElement("button");
@@ -2458,7 +2475,7 @@ $("ovuse").addEventListener("click",function(){
       if(OV_OIL_AUTO!==null && Math.round(pr)===Math.round(OV_OIL_AUTO)){
         // 자동으로 채운 값을 그대로 쓴 경우 — 출처는 이미 오피넷 조회로 적혀 있습니다
       }else{
-        OIL_OK=null;
+        유가증빙제거(); OIL_OK=null;
         SRC.oil="유가: 오피넷 화면 직접 확인 ("+($("date").value||"")+" 기준)";
       }
       적용.push("유가 "+KO(Math.round(pr))+"원/L");
@@ -2490,7 +2507,52 @@ $("omap").addEventListener("click",function(){
   }
   ovOpen("route");
 });
-$("oilshot").addEventListener("click",function(){ ovOpen("oil"); });
+var OIL_BUSY=false;
+function 유가증빙제거(){
+  if(SHOT.oil.some(function(it){return it.autoOil;})){
+    SHOT.oil=SHOT.oil.filter(function(it){return !it.autoOil;}); renderSlot("oil");
+    if(!OIL_BUSY)$("oilshot").textContent="증빙 자동 첨부";
+  }
+}
+function 유가증빙그리기(r){
+  if(!Number.isFinite(r.원값)||r.원값<=0||!/^\d{4}-\d{2}-\d{2}$/.test(r.날짜))throw new Error("증빙에 사용할 조회값이 올바르지 않습니다");
+  var cv=document.createElement("canvas");cv.width=1200;cv.height=800;
+  var x=cv.getContext("2d");if(!x)throw new Error("증빙 이미지를 만들 수 없습니다");
+  x.fillStyle="#fff";x.fillRect(0,0,1200,800);
+  x.fillStyle="#00614f";x.fillRect(0,0,1200,140);
+  function t(v,y,size,color){x.font=(size>=30?"600 ":"")+size+'px "Malgun Gothic",sans-serif';x.fillStyle=color||"#243a32";x.fillText(v,64,y);}
+  t("유가 조회 증빙",90,40,"#fff");
+  t("한국석유공사 오피넷 · 전국 평균판매가격",200,28);
+  t(r.유종+"   "+r.원값.toFixed(2)+" 원/L",282,46);
+  t("정산 적용 유가   "+KO(r.값)+" 원/L (원 단위 반올림)",342,26);
+  t("출장일   "+r.출장일,410,25);t("유가 기준일   "+r.날짜,456,25);
+  t(r.대체?"출장일 값 대신 조회 가능한 이전 날짜의 유가를 적용했습니다.":"출장일과 같은 날짜의 유가입니다.",510,23);
+  t("출처: 한국석유공사 오피넷 Open API / avgRecentPrice",588,22);
+  t("https://www.opinet.co.kr",628,22);
+  t("자료 생성: "+new Date().toLocaleString("ko-KR"),674,21);
+  t("실제 API 조회 결과를 정리한 자료입니다. 오피넷 웹 화면 캡처가 아닙니다.",736,22);
+  return cv;
+}
+async function 유가증빙자동첨부(){
+  if(OIL_BUSY)return;
+  OIL_BUSY=true;var b=$("oilshot");b.disabled=true;$("oilmanual").disabled=true;b.textContent="조회 · 첨부 중…";
+  var d=$("date").value,f=$("oil").value;
+  try{
+    var r=await 유가자동조회();
+    var cv=유가증빙그리기(r),it=새장();it.full=cv;it.use=cv;it.autoOil=true;
+    SHOT.oil=[it];renderSlot("oil");focusSlot("oil");$("dtShot").open=true;draw();
+    $("stat2").textContent="✓ 유가 "+KO(r.값)+" 원/L 입력 · 증빙 1장 첨부 완료 ("+r.날짜+" 기준)";
+    b.textContent="✓ 증빙 다시 조회";
+  }catch(e){
+    b.textContent="증빙 다시 시도";
+    if(d===$("date").value&&f===$("oil").value){
+      $("stat2").textContent=((e&&e.message)||"증빙 생성 실패")+" — 다시 시도하거나 오피넷에서 직접 확인해 주세요.";
+      $("oilmanual").hidden=false;
+    }
+  }finally{OIL_BUSY=false;b.disabled=false;$("oilmanual").disabled=false;}
+}
+$("oilshot").addEventListener("click",유가증빙자동첨부);
+$("oilmanual").addEventListener("click",function(){ovOpen("oil");});
 $("tollshot").addEventListener("click",function(){ ovOpen("toll"); });
 $("parkshot").addEventListener("click",function(){ ovOpen("park"); });
 $("qrnew").addEventListener("click",qrStart);
@@ -2552,6 +2614,7 @@ $("prt").addEventListener("click",function(){
 });
 
 $("smp").addEventListener("click",function(){
+  유가증빙제거();
   OIL_REQUEST++; OIL_OK=null; RT_INFO=null; 왕복표기갱신(); SRC=Object.assign({},SRC_DEFAULT);
   $("date").value="2026-08-14"; $("name").value="홍길동"; $("dept").value="기술운영1팀";
   $("purp").value="화성 현장 공정 점검 및 시행사 협의";
@@ -2596,7 +2659,7 @@ document.querySelectorAll("input,select").forEach(function(el){
 // 직접 고친 거리는 왕복인지 알 수 없으므로 표기를 거둡니다
 $("km").addEventListener("input",function(){왕복표기해제(); SRC.route=SRC_DEFAULT.route;});
 ["price","date","oil"].forEach(function(k){$(k).addEventListener("input",function(){
-  OIL_REQUEST++; OIL_OK=null; SRC.oil=SRC_DEFAULT.oil; $("stat2").textContent="";
+  유가증빙제거(); OIL_REQUEST++; OIL_OK=null; SRC.oil=SRC_DEFAULT.oil; $("stat2").textContent="";
 });});
 
 function 기준적용(){
@@ -2619,6 +2682,7 @@ pinInit();
 팝업초기검사();
 focusSlot("map");
 setMode();
+경로단계갱신(true);
 draw();
 </script>
 </body>
