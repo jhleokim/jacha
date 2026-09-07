@@ -215,12 +215,12 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 #draftbar p{margin:5px 0 0;font-size:12.5px;color:var(--ink-2);line-height:1.65}
 #draftbar .row{margin-top:10px}
 /* Clear next actions, including keyboard and mobile use. */
-.route-action{min-height:52px;padding:14px 22px;font-weight:700;font-size:15px;border-radius:12px}
-#omap{width:100%;min-height:58px;text-align:left;display:flex;align-items:center;justify-content:space-between}
-#chkaddr.p,#omap.p{box-shadow:0 5px 14px rgba(0,100,78,.18)}
+.route-action{height:40px;min-height:40px;padding:0 14px;font-weight:500;font-size:14px;border-radius:8px}
+#omap{width:auto;text-align:left;display:inline-flex;align-items:center;gap:14px}
+#chkaddr.p,#omap.p{box-shadow:none}
 button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 #oilshot{min-height:36px;color:#00614f;border-color:#7db9a7;background:#edf8f3;font-weight:600}
-@media(max-width:540px){#chkaddr{width:100%}.route-action{font-size:14px}}
+@media(max-width:540px){.route-action{height:44px;min-height:44px}}
 @media(prefers-reduced-motion:reduce){button.next{animation:none}}
 </style>
 </head>
@@ -509,7 +509,7 @@ button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 <script src="config.js" onerror="void 0"></script>
 <script>
 "use strict";
-var VERSION="v5.6";   // 화면을 고칠 때마다 올립니다 (사용자가 반영 여부를 확인하는 표시)
+var VERSION="v5.7";   // 화면을 고칠 때마다 올립니다 (사용자가 반영 여부를 확인하는 표시)
 var G="#009178", G_DK="#00705F", R="#DC231E",
     // 증빙 서식(캔버스)은 결재 문서 관행에 맞춰 맑은 고딕으로 고정합니다.
     FONT='"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif';
