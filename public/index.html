@@ -263,7 +263,8 @@ kbd{background:#EFF3F1;border:1px solid var(--ln-2);border-bottom-width:2px;bord
 <div class="fh"><label for="purp">출장목적</label>
 <label class="pin" data-pin="purp"><input type="checkbox"><i></i>고정</label></div>
 <input id="purp" type="text" placeholder="현장 공정 점검"></div>
-<p class="note"><b>고정</b>한 값은 이 브라우저에 최대 12시간 보관합니다. <b>비우기</b>를 누르면 고정값도 모두 삭제됩니다.</p>
+<p class="note"><b>고정</b>을 켜 두면 <b>비우기</b>를 눌러도 지워지지 않고, 다음에 페이지를 열 때도 그대로 남습니다.
+이 브라우저에만 저장되며, 12시간 넘게 열지 않으면 스스로 지워집니다.</p>
 </section>
 
 <section>
@@ -2563,11 +2564,10 @@ $("smp").addEventListener("click",function(){
 });
 $("clr").addEventListener("click",function(){
   qrStop(); ovClose(); capReset();
-  PIN_FIELDS.forEach(function(k){var b=pinBox(k); if(b)b.checked=false; pinPaint(k);});
-  try{localStorage.removeItem(PIN_KEY);}catch(e){}
-  ["name","dept","purp","from"].forEach(function(i){$(i).value="";});
+  // 고정된 항목은 건드리지 않습니다
+  ["name","dept","purp","from"].forEach(function(i){ if(!pinOn(i))$(i).value=""; });
   ["via","to","km","price"].forEach(function(i){ $(i).value=""; });
-  $("date").value=오늘문자열();
+  if(!pinOn("date"))$("date").value=오늘문자열();
   기준적용(); OIL_REQUEST++; OIL_OK=null; SRC=Object.assign({},SRC_DEFAULT);
   $("stat2").textContent="";
   $("toll").value="0"; $("park").value="0";

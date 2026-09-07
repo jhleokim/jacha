@@ -80,11 +80,13 @@ test('new configuration wins over legacy draft; personal values still restore',(
   assert.equal(a.e.get('name').value,'테스트');assert.equal(Number(a.e.get('rate').value),1.3);assert.equal(Number(a.e.get('fe').value),12);
   assert.equal(a.e.get('rnd').value,'round');assert.equal(a.e.get('inc').checked,false);
 });
-test('clear removes pinned values and cancels pending draft resurrection',()=>{
-  const a=app();valid(a);a.e.get('name').value='테스트';a.pins.get('name').input.checked=true;a.c.pinSave();a.c.초안저장();
-  a.e.get('clr').click();assert.equal(a.saved.has('jacha_pinned_v1'),false);assert.equal(a.saved.has('jacha_draft_v1'),false);
-  assert.equal(a.c.DRAFT_T,null);assert.equal(a.e.get('name').value,'');assert.equal(a.pins.get('name').input.checked,false);
-  const b=app(a.saved);assert.equal(b.e.get('name').value,'');
+test('clear keeps pinned values but cancels pending draft resurrection',()=>{
+  const a=app();valid(a);a.e.get('name').value='테스트';a.pins.get('name').input.checked=true;a.c.pinSave();
+  a.e.get('to').value='지울 값';a.c.초안저장();
+  a.e.get('clr').click();assert.equal(a.saved.has('jacha_pinned_v1'),true);assert.equal(a.saved.has('jacha_draft_v1'),false);
+  assert.equal(a.c.DRAFT_T,null);assert.equal(a.e.get('name').value,'테스트');assert.equal(a.pins.get('name').input.checked,true);
+  assert.equal(a.e.get('to').value,'');
+  const b=app(a.saved);assert.equal(b.e.get('name').value,'테스트');
 });
 test('expired and legacy pins are discarded',()=>{
   for(const pin of [{name:'테스트'},{t:Date.now()-13*3600000,f:{name:'테스트'}}]){
