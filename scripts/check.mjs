@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { Script } from 'node:vm';
 import { execFileSync } from 'node:child_process';
-for (const file of ['worker.js', ...readdirSync('public').filter(f => f.endsWith('.js')).map(f => `public/${f}`)]) {
+for (const file of ['worker.js', 'opinet-capture.js', ...readdirSync('public').filter(f => f.endsWith('.js')).map(f => `public/${f}`)]) {
   execFileSync(process.execPath, ['--check', file]);
 }
 for (const file of readdirSync('public').filter(f => f.endsWith('.html'))) {

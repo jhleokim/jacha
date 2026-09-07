@@ -222,6 +222,28 @@ button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 #oilshot{min-height:36px;color:#00614f;border-color:#7db9a7;background:#edf8f3;font-weight:600}
 @media(max-width:540px){.route-action{height:44px;min-height:44px}}
 @media(prefers-reduced-motion:reduce){button.next{animation:none}}
+.qr-connect{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.qr-code{flex:0 0 156px;text-align:center}
+#qrcv{width:156px;max-width:100%;height:auto;background:#fff;border-radius:6px}
+.qr-code.expanded{flex-basis:260px}
+.qr-code.expanded #qrcv{width:260px}
+.qr-help{flex:1;min-width:180px}
+.qr-link{border:0;margin:8px 0;background:transparent;font-size:12px}
+.qr-link>summary{padding:0;font-size:12px;font-weight:400}
+.qr-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-height:350px;overflow:auto;padding:2px}
+.qr-photo{min-width:0;background:#fff;border:1px solid var(--ln);border-radius:8px;overflow:hidden}
+.qr-preview{width:100%;height:210px;padding:10px;border:0;border-radius:0;display:block;background:#fff;cursor:zoom-in}
+.qr-preview img{width:100%;height:100%;object-fit:contain;display:block}
+.qr-photo-footer{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-top:1px solid var(--ln);font-size:12px;color:var(--ink-2)}
+.qr-photo-footer button{height:30px;padding:0 9px;font-size:12px}
+.receipt-view{border:0;border-radius:12px;padding:0;width:min(960px,calc(100vw - 32px));max-height:90vh;color:var(--ink)}
+.receipt-view::backdrop{background:rgba(16,26,22,.65)}
+.receipt-view header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--ln)}
+.receipt-view h3{font-size:15px;margin:0}
+.receipt-view-body{max-height:72vh;overflow:auto;padding:16px;background:#f2f4f3}
+.receipt-view img{display:block;max-width:100%;max-height:66vh;width:auto;height:auto;margin:auto;object-fit:contain}
+.receipt-view.zoomed img{width:100%;max-height:none}
+@media(max-width:440px){.qr-code{flex-basis:140px}#qrcv{width:140px}.qr-help{min-width:140px}.qr-gallery{grid-template-columns:minmax(0,1fr)}.qr-preview{height:230px}}
 </style>
 </head>
 <body>
@@ -329,7 +351,7 @@ button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 </span></div>
 <input id="park" type="number" step="10" min="0" value="0"></div>
 </div>
-<p class="note" id="hint2">유가 옆 <b>증빙 자동 첨부</b>를 누르면 유가 입력부터 증빙 첨부까지 한 번에 완료됩니다. 실제 오피넷 조회값·기준일·출처를 담은 이미지로, 사이트 화면 캡처는 아닙니다.</p>
+<p class="note" id="hint2">유가 옆 <b>증빙 자동 첨부</b>를 누르면 유가를 채우고 <b>오피넷 실제 조회화면을 자동 캡처</b>해 첨부합니다. 처음에는 약 20~40초 걸릴 수 있으며, 캡처가 안 되면 조회값을 정리한 자료를 대신 첨부하고 알려드립니다.</p>
 <p class="note" id="stat2" role="status" aria-live="polite"></p>
 <p class="note">조회가 안 되면 지도·오피넷에서 확인한 값을 직접 넣으셔도 됩니다.</p>
 </section>
@@ -414,18 +436,21 @@ button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 <div class="ovstep"><span>2</span><span id="ovs2"></span> <em id="ovxy"></em></div>
 <div class="row" style="margin-top:0" id="ovbtns"></div>
 <div id="ovqr" style="display:none;margin-top:12px;padding:14px;border:1px solid var(--ln);border-radius:10px;background:var(--g-tint)">
-<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
-<canvas id="qrcv" style="border-radius:6px;background:#fff"></canvas>
-<div style="flex:1;min-width:210px">
+<div class="qr-connect">
+<div class="qr-code" id="qrsize"><canvas id="qrcv" aria-label="모바일 영수증 전송 QR 코드"></canvas>
+<button class="mini" id="qrenlarge" style="margin-top:6px" aria-expanded="false">QR 크게</button></div>
+<div class="qr-help">
 <p class="note" id="qrstat" style="margin:0 0 8px"></p>
+<details class="qr-link"><summary>연결 주소 보기</summary>
 <p class="note" id="qrurl" style="margin:0 0 10px;word-break:break-all;color:var(--ink-2);font-size:11px"></p>
+</details>
 <div class="row" style="margin-top:0">
 <button class="mini" id="qrnew">새 QR</button>
 <button class="mini" id="qrstop">중지</button>
 </div>
 </div>
-<div id="qrthumbs" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--ln)"></div>
 </div>
+<div id="qrthumbs" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--ln)"></div>
 </div>
 
 <div class="ovstep" style="margin-top:18px"><span>3</span>결과 화면 캡처 <em>방금 연 창을 고르세요</em></div>
@@ -506,10 +531,16 @@ button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 
 <script src="qr.js" onerror="void 0"></script>
 <script src="calculation.js"></script>
+<dialog id="receiptview" class="receipt-view" aria-labelledby="receiptviewtitle">
+<header><h3 id="receiptviewtitle">영수증 확인</h3><div class="row" style="margin:0">
+<button id="receiptzoom" class="mini" aria-pressed="false">글씨 확대</button>
+<button id="receiptclose" class="mini">닫기</button></div></header>
+<div class="receipt-view-body"><img id="receiptimage" alt="받은 영수증"></div>
+</dialog>
 <script src="config.js" onerror="void 0"></script>
 <script>
 "use strict";
-var VERSION="v5.7";   // 화면을 고칠 때마다 올립니다 (사용자가 반영 여부를 확인하는 표시)
+var VERSION="v5.8";   // 화면을 고칠 때마다 올립니다 (사용자가 반영 여부를 확인하는 표시)
 var G="#009178", G_DK="#00705F", R="#DC231E",
     // 증빙 서식(캔버스)은 결재 문서 관행에 맞춰 맑은 고딕으로 고정합니다.
     FONT='"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif';
@@ -1814,7 +1845,7 @@ function qrDraw(text){
   var n=q.getModuleCount(), 칸=5, 여백=4, px=(n+여백*2)*칸,
       cv=$("qrcv"), r=window.devicePixelRatio||1;
   cv.width=Math.round(px*r); cv.height=Math.round(px*r);
-  cv.style.width=px+"px"; cv.style.height="auto";
+  cv.style.height="auto";
   cv.style.aspectRatio="1 / 1";
   var x=cv.getContext("2d");
   x.setTransform(r,0,0,r,0,0);
@@ -1830,7 +1861,7 @@ function qrStat(t,warn){
   e.textContent=t; e.className="note"+(warn?" warn":"");
 }
 
-/* 모달 안 QR 박스에 지금까지 들어온 사진을 작은 썸네일로 보여줍니다.
+/* 받은 사진을 읽기 쉬운 크기로 표시하고 확대 확인을 제공합니다.
    삭제도 여기서 바로 되고, 나머지 편집(자르기·강조 등)은 아래
    '증빙 미리보기' 칸에서 합니다. renderSlot() 이 SHOT 을 바꿀 때마다
    같이 불러 항상 같은 목록을 보여줍니다. */
@@ -1842,33 +1873,41 @@ function qrThumbs(){
   통.style.display="block";
   통.innerHTML="";
   var 버튼줄=document.createElement("div");
-  버튼줄.style.cssText="display:flex;gap:8px;flex-wrap:wrap";
+  버튼줄.className="qr-gallery";
+  var slot=QR_SLOT;
   목록.forEach(function(it,idx){
     var card=document.createElement("div");
-    card.style.cssText="position:relative;width:64px;height:64px;"
-      +"border:1px solid var(--ln);border-radius:8px;overflow:hidden;background:#fff";
+    card.className="qr-photo";
+    var preview=document.createElement("button");preview.type="button";preview.className="qr-preview";
+    preview.setAttribute("aria-label",(idx+1)+"번째 영수증 크게 보기");
     var img=document.createElement("img");
     img.src=it.use.src || it.use.toDataURL("image/png");
-    img.style.cssText="width:100%;height:100%;object-fit:cover;display:block";
-    card.appendChild(img);
+    img.alt=(idx+1)+"번째 받은 영수증";
+    preview.appendChild(img);
+    preview.addEventListener("click",function(){
+      $("receiptimage").src=img.src;$("receiptviewtitle").textContent=(idx+1)+"번째 영수증";
+      $("receiptview").className="receipt-view";$("receiptzoom").textContent="글씨 확대";$("receiptzoom").setAttribute("aria-pressed","false");
+      $("receiptview").showModal();
+    });
+    card.appendChild(preview);
+    var footer=document.createElement("div");footer.className="qr-photo-footer";
+    var label=document.createElement("span");label.textContent=(idx+1)+"번째 · 눌러서 크게 보기";footer.appendChild(label);
     var del=document.createElement("button");
-    del.type="button"; del.textContent="×";
-    del.setAttribute("aria-label","사진 삭제");
-    del.style.cssText="position:absolute;top:2px;right:2px;width:18px;height:18px;line-height:16px;"
-      +"padding:0;border:none;border-radius:50%;background:rgba(16,26,22,.65);color:#fff;"
-      +"font-size:13px;cursor:pointer";
+    del.type="button"; del.textContent="삭제";
+    del.setAttribute("aria-label",(idx+1)+"번째 영수증 삭제");
     del.addEventListener("click",function(e){
       e.stopPropagation();
-      SHOT[QR_SLOT].splice(idx,1);
-      refreshSlot(QR_SLOT);
+      var index=SHOT[slot].indexOf(it);if(index<0)return;
+      SHOT[slot].splice(index,1);
+      refreshSlot(slot);
     });
-    card.appendChild(del);
+    footer.appendChild(del);card.appendChild(footer);
     버튼줄.appendChild(card);
   });
   통.appendChild(버튼줄);
   var 안내=document.createElement("p");
   안내.className="note"; 안내.style.cssText="margin:8px 0 0";
-  안내.textContent=목록.length+"장 받음 — 자르기·강조 같은 편집은 아래 '증빙 미리보기'에서 할 수 있습니다.";
+  안내.textContent=목록.length+"장 첨부됨 · 사진을 눌러 금액을 확인하세요. 자르기·강조는 메인 화면의 첨부된 증빙에서 할 수 있습니다.";
   통.appendChild(안내);
 }
 
@@ -2497,7 +2536,7 @@ $("ovfile").addEventListener("click",function(){
 $("ovx").addEventListener("click",ovClose);
 $("ovclose").addEventListener("click",ovClose);
 $("ov").addEventListener("click",function(e){ if(e.target===$("ov"))ovClose(); });
-document.addEventListener("keydown",function(e){ if(e.key==="Escape")ovClose(); });
+document.addEventListener("keydown",function(e){ if(e.key==="Escape"&&!$("receiptview").open)ovClose(); });
 
 $("omap").addEventListener("click",function(){
   지도열어봤다=true; 경로단계갱신(true);      // 한 번 열었으면 물결은 거둡니다
@@ -2514,6 +2553,18 @@ function 유가증빙제거(){
     if(!OIL_BUSY)$("oilshot").textContent="증빙 자동 첨부";
   }
 }
+
+$("qrenlarge").addEventListener("click",function(){
+  var large=$("qrsize").className!=="qr-code expanded";
+  $("qrsize").className=large?"qr-code expanded":"qr-code";
+  this.textContent=large?"QR 작게":"QR 크게";this.setAttribute("aria-expanded",String(large));
+});
+$("receiptclose").addEventListener("click",function(){$("receiptview").close();});
+$("receiptzoom").addEventListener("click",function(){
+  var zoom=$("receiptview").className!=="receipt-view zoomed";
+  $("receiptview").className=zoom?"receipt-view zoomed":"receipt-view";
+  this.textContent=zoom?"전체 보기":"글씨 확대";this.setAttribute("aria-pressed",String(zoom));
+});
 function 유가증빙그리기(r){
   if(!Number.isFinite(r.원값)||r.원값<=0||!/^\d{4}-\d{2}-\d{2}$/.test(r.날짜))throw new Error("증빙에 사용할 조회값이 올바르지 않습니다");
   var cv=document.createElement("canvas");cv.width=1200;cv.height=800;
@@ -2533,15 +2584,39 @@ function 유가증빙그리기(r){
   t("실제 API 조회 결과를 정리한 자료입니다. 오피넷 웹 화면 캡처가 아닙니다.",736,22);
   return cv;
 }
+async function 유가웹캡처(r){
+  var ac=new AbortController(),timer=setTimeout(function(){ac.abort();},55000);
+  try{
+    var url="/opinet/screenshot?date="+r.날짜.replace(/-/g,"")+"&prodcd="+FUEL[r.유종][1];
+    var response=await fetch(url,{signal:ac.signal});
+    if(!response.ok)throw new Error("오피넷 웹화면 캡처에 실패했습니다");
+    if(response.headers.get("content-type")!=="image/png"||response.headers.get("x-oil-date")!==r.날짜||Math.abs(Number(response.headers.get("x-oil-price"))-r.원값)>0.005)
+      throw new Error("웹화면과 조회한 유가가 달라 캡처를 첨부하지 않았습니다");
+    var blob=await response.blob();
+    if(!blob.size||blob.size>8*1024*1024)throw new Error("캡처 이미지 크기를 확인할 수 없습니다");
+    return await new Promise(function(resolve,reject){
+      var reader=new FileReader();reader.onerror=function(){reject(new Error("캡처를 읽지 못했습니다"));};
+      reader.onload=function(){var im=new Image();im.onload=function(){resolve(im);};im.onerror=function(){reject(new Error("캡처 이미지를 열지 못했습니다"));};im.src=reader.result;};
+      reader.readAsDataURL(blob);
+    });
+  }finally{clearTimeout(timer);}
+}
 async function 유가증빙자동첨부(){
   if(OIL_BUSY)return;
   OIL_BUSY=true;var b=$("oilshot");b.disabled=true;$("oilmanual").disabled=true;b.textContent="조회 · 첨부 중…";
   var d=$("date").value,f=$("oil").value;
   try{
     var r=await 유가자동조회();
-    var cv=유가증빙그리기(r),it=새장();it.full=cv;it.use=cv;it.autoOil=true;
+    var requestId=OIL_REQUEST,cv,web=true;
+    b.textContent="웹화면 캡처 중…";
+    $("stat2").textContent="유가 입력 완료 · 오피넷에서 "+r.날짜+" 기준 "+r.유종+" 화면을 열어 캡처하는 중…";
+    try{cv=await 유가웹캡처(r);}catch(e){web=false;cv=유가증빙그리기(r);}
+    if(requestId!==OIL_REQUEST||d!==$("date").value||f!==$("oil").value)return;
+    var it=새장();it.full=cv;it.use=cv;it.autoOil=true;it.webOil=web;
     SHOT.oil=[it];renderSlot("oil");focusSlot("oil");$("dtShot").open=true;draw();
-    $("stat2").textContent="✓ 유가 "+KO(r.값)+" 원/L 입력 · 증빙 1장 첨부 완료 ("+r.날짜+" 기준)";
+    $("stat2").textContent=web
+      ? "✓ 유가 "+KO(r.값)+" 원/L 입력 · 오피넷 웹화면 증빙 1장 첨부 완료 ("+r.날짜+" 기준)"
+      : "웹화면 캡처가 되지 않아 조회값 정리 자료로 증빙 1장 첨부 완료 ("+r.날짜+" 기준). 실제 화면은 ‘직접 확인’에서 캡처할 수 있습니다.";
     b.textContent="✓ 증빙 다시 조회";
   }catch(e){
     b.textContent="증빙 다시 시도";
@@ -2549,7 +2624,10 @@ async function 유가증빙자동첨부(){
       $("stat2").textContent=((e&&e.message)||"증빙 생성 실패")+" — 다시 시도하거나 오피넷에서 직접 확인해 주세요.";
       $("oilmanual").hidden=false;
     }
-  }finally{OIL_BUSY=false;b.disabled=false;$("oilmanual").disabled=false;}
+  }finally{
+    OIL_BUSY=false;b.disabled=false;$("oilmanual").disabled=false;
+    if(b.textContent==="웹화면 캡처 중…")b.textContent="증빙 자동 첨부";
+  }
 }
 $("oilshot").addEventListener("click",유가증빙자동첨부);
 $("oilmanual").addEventListener("click",function(){ovOpen("oil");});
