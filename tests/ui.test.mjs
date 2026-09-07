@@ -43,10 +43,43 @@ function app(saved=new Map(),config){
     requestAnimationFrame:cb=>{frames.set(++seq,cb);return seq;},cancelAnimationFrame:id=>frames.delete(id),
     console,alert(){},crypto:globalThis.crypto,Uint8Array,URL,URLSearchParams,AbortController,Image:class{}});
   vm.runInContext(readFileSync('public/calculation.js','utf8'),context);
+  for(const file of ['receipt-amount.js','receipt-reader.js','receipt-evidence.js'])vm.runInContext(readFileSync('public/'+file,'utf8'),context);
   for(const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))vm.runInContext(match[1],context);
   return {c:context,e:elements,pins,saved,timers,frames};
 }
 function valid(a){for(const [k,v] of Object.entries({km:'23',price:'1500',fe:'10',rate:'1.2',toll:'0',park:'0'}))a.e.get(k).value=v;}
+
+test('native modal file input resets immediately, preserves target and reports duplicate photos',async()=>{
+  const a=app();valid(a);a.c.ReceiptReader.recognize=async()=>({amount:2800,reason:'test'});
+  a.c.FileReader=class{readAsDataURL(f){this.result=f.data;this.onload();}};
+  a.c.Image=class{constructor(){this.width=100;this.height=200;}set src(v){this._src=v;Promise.resolve().then(()=>this.onload());}get src(){return this._src;}};
+  const input=a.e.get('ovfiles');input.files=[{type:'image/png',data:'data:image/png;base64,TEST'}];input.value='chosen';
+  const pending=a.c.importEvidence(input,'toll');assert.equal(input.value,'');a.c.OVMODE='park';await pending;await Promise.resolve();
+  assert.equal(a.c.SHOT.toll.length,1);assert.equal(a.c.SHOT.park.length,0);
+  await a.c.importEvidence(input,'toll');assert.equal(a.c.SHOT.toll.length,1);assert.match(a.e.get('stat2').textContent,/중복 합산하지/);
+  a.c.SHOT.toll=[];await a.c.importEvidence(input,'toll');assert.equal(a.c.SHOT.toll.length,1);
+  input.files=[];input.value='cancelled';await a.c.importEvidence(input,'toll');assert.equal(input.value,'');assert.equal(a.c.SHOT.toll.length,1);
+});
+test('clear during file read or decode never restores an erased receipt',async()=>{
+  for(const phase of ['read','decode']){
+    const a=app();valid(a);let resume;
+    a.c.FileReader=class{readAsDataURL(){this.result='data:image/png;base64,TEST';if(phase==='read')resume=()=>this.onload();else this.onload();}};
+    a.c.Image=class{set src(v){resume=()=>this.onload();}};
+    const input=a.e.get('ovfiles');input.files=[{type:'image/png'}];const pending=a.c.importEvidence(input,'park');await Promise.resolve();await Promise.resolve();
+    a.e.get('clr').click();resume();await pending;assert.equal(a.c.SHOT.park.length,0);assert.equal(a.e.get('park').value,'0');
+  }
+});
+test('delayed OCR respects user edits, deletion, retry and independent expense categories',async()=>{
+  const a=app();valid(a);const jobs=[];
+  a.c.ReceiptReader.recognize=()=>new Promise(resolve=>jobs.push(resolve));
+  function add(k){const it={use:{width:100,height:100},full:{}};a.c.SHOT[k].push(it);a.c.ReceiptEvidence.start(k,it);return it;}
+  const p=add('park'),t=add('toll');a.e.get('park').value='9000';a.e.get('park').emit('input');
+  jobs[0]({amount:8000,reason:'read'});jobs[1]({amount:2800,reason:'read'});await Promise.resolve();await Promise.resolve();
+  assert.equal(a.e.get('park').value,'9000');assert.equal(a.e.get('toll').value,'2800');
+  a.c.ReceiptEvidence.start('toll',t);a.c.SHOT.toll=[];jobs[2]({amount:6000,reason:'read'});await Promise.resolve();assert.equal(a.e.get('toll').value,'2800');
+  a.c.ReceiptEvidence.start('park',p);a.c.ReceiptEvidence.start('park',p);jobs[3]({amount:1,reason:'stale'});await Promise.resolve();assert.equal(p.receipt.amount,8000);
+  jobs[4]({amount:7000,reason:'fresh'});await Promise.resolve();assert.equal(p.receipt.amount,7000);assert.equal(a.e.get('park').value,'9000');
+});
 
 test('round trip toggles reuse one-way distance, survive reload and preserve expenses',()=>{
   const a=app();valid(a);a.e.get('toll').value='9600';a.e.get('park').value='3000';
