@@ -11,6 +11,8 @@
  *   npx wrangler secret put OPINET_KEY
  */
 
+import {captureResponse} from './opinet-capture.js';
+
 const 조회결과_보관 = {
   "/kakao/": 60 * 60 * 24 * 180,   // 주소의 좌표는 잘 안 바뀝니다
   "/navi/":  60 * 60 * 24 * 30,    // 통행료 변경을 감안해 30일
@@ -73,7 +75,7 @@ async function handle(request, env, ctx) {
     const api=/^\/(kakao|navi|opinet|tmap|receipt)\//.test(path);
     const allowed=new Set([
       "/kakao/v2/local/search/address.json", "/kakao/v2/local/search/keyword.json",
-      "/navi/v1/directions", "/opinet/price", "/receipt/poll"
+      "/navi/v1/directions", "/opinet/price", "/opinet/screenshot", "/receipt/poll"
     ]);
     if(api){
       if(!allowed.has(path))return json({error:"not_found"},404);
@@ -104,6 +106,8 @@ async function handle(request, env, ctx) {
     }
 
     // 사용하지 않는 TMAP 프록시는 외부 키 호출 범위를 줄이기 위해 제거했습니다.
+
+    if(path==='/opinet/screenshot')return captureResponse(request,env,ctx);
 
     // ── 오피넷 유가 ──────────────────────────────────
     if (path === "/opinet/price") {

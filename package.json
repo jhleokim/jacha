@@ -1,6 +1,6 @@
 {
   "name": "jacha",
-  "version": "5.5.0",
+  "version": "5.8.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,6 +9,16 @@
     "verify": "npm run check && npm test",
     "deploy": "wrangler deploy"
   },
-  "devDependencies": {"wrangler": "4.126.0"},
-  "engines": {"node": ">=22"}
+  "devDependencies": {
+    "wrangler": "4.126.0"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@cloudflare/puppeteer": "1.4.0"
+  },
+  "overrides": {
+    "@puppeteer/browsers": "3.2.2"
+  }
 }

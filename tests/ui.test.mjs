@@ -14,12 +14,12 @@ function app(saved=new Map(),config){
     set innerHTML(v){this.html=v;this.children=[];}
     get innerHTML(){return this.html||'';}
     addEventListener(event,cb){(this.listeners[event]??=[]).push(cb);}
-    emit(event){for(const cb of this.listeners[event]||[])cb.call(this,{target:this,preventDefault(){}});}
+    emit(event){for(const cb of this.listeners[event]||[])cb.call(this,{target:this,preventDefault(){},stopPropagation(){}});}
     click(){this.emit('click');}
     appendChild(el){this.children.push(el);if(el.id)elements.set(el.id,el);return el;}
     querySelectorAll(selector){return selector==='canvas'?this.children.filter(e=>e.tagName==='canvas'):[];}
     querySelector(){return this.input;}
-    setAttribute(){} focus(){} scrollIntoView(){}
+    setAttribute(){} focus(){} scrollIntoView(){} showModal(){this.open=true;} close(){this.open=false;}
     getContext(){const owner=this;return {
       fillText(text,x,y){owner.texts.push({text:String(text),x,y,font:this.font});},
       fillRect(){},strokeRect(){},setTransform(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},drawImage(){}
@@ -166,4 +166,27 @@ test('route starts with prominent address action then promotes map after confirm
   assert.equal(a.e.get('omap').className,'p2 route-action');
   a.c.확정좌표=()=>[{x:127,y:37}];a.c.경로단계갱신(true);
   assert.equal(a.e.get('omap').className,'p route-action');assert.equal(a.e.get('chkaddr').className,'done route-action');
+});
+test('actual web screenshot is attached when available; conditions changed during capture discard it',async()=>{
+  for(const change of [false,true]){
+    const a=app();valid(a);a.e.get('date').value='2026-09-07';let resolve,ready;
+    a.c.lookupOil가까운=async()=>({price:1652.48,date:'2026-09-06'});
+    const started=new Promise(r=>ready=r);
+    a.c.유가웹캡처=()=>{ready();return new Promise(r=>resolve=r);};
+    const p=a.c.유가증빙자동첨부();await started;
+    if(change){a.e.get('oil').value='경유';a.e.get('oil').emit('input');}
+    resolve({width:1280,height:1170,src:'data:image/png;base64,test'});await p;
+    assert.equal(a.c.SHOT.oil.length,change?0:1);
+    if(!change){assert.equal(a.c.SHOT.oil[0].webOil,true);assert.match(a.e.get('stat2').textContent,/웹화면 증빙/);}
+    assert.equal(a.e.get('oilshot').disabled,false);
+  }
+});
+test('receipt preview opens and deletion targets the original item without losing other photos',()=>{
+  const a=app();a.c.QR_SLOT='toll';
+  const first={use:{width:200,height:700,src:'data:image/png;base64,first'}},second={use:{width:200,height:700,src:'data:image/png;base64,second'}};
+  a.c.SHOT.toll=[first,second];a.c.qrThumbs();
+  const card=a.e.get('qrthumbs').children[0].children[0];card.children[0].click();
+  assert.equal(a.e.get('receiptview').open,true);assert.equal(a.e.get('receiptimage').src,first.use.src);
+  a.e.get('receiptclose').click();assert.equal(a.e.get('receiptview').open,false);
+  card.children[1].children[1].click();assert.equal(a.c.SHOT.toll.length,1);assert.equal(a.c.SHOT.toll[0],second);
 });
