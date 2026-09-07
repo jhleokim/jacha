@@ -47,6 +47,38 @@ function app(saved=new Map(),config){
   return {c:context,e:elements,pins,saved,timers,frames};
 }
 function valid(a){for(const [k,v] of Object.entries({km:'23',price:'1500',fe:'10',rate:'1.2',toll:'0',park:'0'}))a.e.get(k).value=v;}
+
+test('round trip toggles reuse one-way distance, survive reload and preserve expenses',()=>{
+  const a=app();valid(a);a.e.get('toll').value='9600';a.e.get('park').value='3000';
+  a.c.경로거리반영(12.8,'지도 테스트');
+  for(const rt of [true,false,true,true]){a.e.get('rt').checked=rt;a.e.get('rt').emit('change');assert.equal(Number(a.e.get('km').value),rt?25.6:12.8);}
+  assert.equal(a.e.get('toll').value,'9600');assert.equal(a.e.get('park').value,'3000');
+  const b=app(a.saved);b.e.get('rt').checked=false;b.e.get('rt').emit('change');assert.equal(Number(b.e.get('km').value),12.8);
+  b.e.get('km').value='40';b.e.get('km').emit('input');b.e.get('rt').checked=true;b.e.get('rt').emit('change');assert.equal(Number(b.e.get('km').value),40);assert.equal(b.c.RT_INFO,null);
+});
+
+test('automatic route attaches matching screenshot once and ignores stale replies',async()=>{
+  for(const change of ['none','address','clear','km']){
+    const a=app();valid(a);a.e.get('to').value='도착';a.e.get('rt').checked=true;
+    a.c.확정좌표=()=>[{x:127,y:37,nm:'출발'},{x:128,y:38,nm:'도착'}];
+    let resolve,calls=0;a.c.경로웹캡처=()=>{calls++;return new Promise(r=>resolve=r);};
+    const p=a.c.경로자동조회();await a.c.경로자동조회();assert.equal(calls,1);
+    if(change==='address'){a.e.get('to').value='바뀐 도착';a.e.get('to').emit('input');}
+    if(change==='clear')a.e.get('clr').click();
+    if(change==='km'){a.e.get('km').value='99';a.e.get('km').emit('input');}
+    resolve({km:12.8,image:{width:1440,height:1000}});await p;
+    assert.equal(a.c.SHOT.map.length,change==='none'?1:0);assert.equal(a.e.get('autoroute').disabled,false);
+    if(change==='none'){assert.equal(Number(a.e.get('km').value),25.6);assert.equal(a.c.SHOT.map[0].autoMap,true);}
+    if(change==='km')assert.equal(a.e.get('km').value,'99');
+  }
+});
+
+test('failed map capture keeps an explicit distance-only fallback and never invents evidence',async()=>{
+  const a=app();valid(a);a.e.get('to').value='도착';a.c.확정좌표=()=>[{x:127,y:37},{x:128,y:38}];
+  a.c.경로웹캡처=async()=>{throw new Error('timeout');};a.c.자동거리=async()=>10;
+  await a.c.경로자동조회();assert.equal(Number(a.e.get('km').value),10);assert.equal(a.c.SHOT.map.length,0);assert.match(a.e.get('stat').textContent,/지도 캡처는 받지 못/);
+  a.c.자동거리=async()=>{throw new Error('offline');};await a.c.경로자동조회();assert.equal(Number(a.e.get('km').value),10);assert.equal(a.e.get('autoroute').disabled,false);
+});
 test('footer baselines stay inside the actual canvas for all route/expense/font combinations',()=>{
   const a=app();valid(a);
   for(const scale of [.8,1,1.2])for(const count of [0,1,3,8])for(const toll of ['0','9600'])for(const park of ['0','3000']){
@@ -59,7 +91,7 @@ test('footer baselines stay inside the actual canvas for all route/expense/font 
 });
 test('modal round trip, toll and parking persist immediately with provenance',()=>{
   const a=app();valid(a);
-  a.c.OVMODE='route';a.e.get('ovkm').value='11.5';a.e.get('ovrt').checked=true;a.e.get('ovuse').click();
+  a.c.OVMODE='route';a.e.get('ovkm').value='11.5';a.e.get('rt').checked=true;a.e.get('ovuse').click();
   a.c.OVMODE='toll';a.e.get('ovtollamt').value='3000';a.e.get('ovuse').click();
   a.c.OVMODE='park';a.e.get('ovparkamt').value='2000';a.e.get('ovuse').click();
   const b=app(a.saved);assert.equal(b.e.get('km').value,'23');assert.equal(b.c.RT_INFO.편도,11.5);
@@ -161,11 +193,11 @@ test('transport failures do not retry seven different dates',async()=>{
   a.c.lookupOil=async()=>{calls++;throw new Error('HTTP 503');};
   await assert.rejects(a.c.lookupOil가까운('2026-09-07','휘발유'),/503/);assert.equal(calls,1);
 });
-test('route starts with prominent address action then promotes map after confirmation',()=>{
+test('route keeps automatic and manual actions separate after address confirmation',()=>{
   const a=app();assert.equal(a.e.get('chkaddr').className,'p route-action');
   assert.equal(a.e.get('omap').className,'p2 route-action');
   a.c.확정좌표=()=>[{x:127,y:37}];a.c.경로단계갱신(true);
-  assert.equal(a.e.get('omap').className,'p route-action');assert.equal(a.e.get('chkaddr').className,'done route-action');
+  assert.equal(a.e.get('omap').className,'p2 route-action');assert.equal(a.e.get('chkaddr').className,'done route-action');
 });
 test('actual web screenshot is attached when available; conditions changed during capture discard it',async()=>{
   for(const change of [false,true]){

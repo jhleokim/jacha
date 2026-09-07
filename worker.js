@@ -12,6 +12,7 @@
  */
 
 import {captureResponse} from './opinet-capture.js';
+import {routeCaptureResponse} from './route-capture.js';
 
 const 조회결과_보관 = {
   "/kakao/": 60 * 60 * 24 * 180,   // 주소의 좌표는 잘 안 바뀝니다
@@ -75,7 +76,7 @@ async function handle(request, env, ctx) {
     const api=/^\/(kakao|navi|opinet|tmap|receipt)\//.test(path);
     const allowed=new Set([
       "/kakao/v2/local/search/address.json", "/kakao/v2/local/search/keyword.json",
-      "/navi/v1/directions", "/opinet/price", "/opinet/screenshot", "/receipt/poll"
+      "/navi/v1/directions", "/navi/screenshot", "/opinet/price", "/opinet/screenshot", "/receipt/poll"
     ]);
     if(api){
       if(!allowed.has(path))return json({error:"not_found"},404);
@@ -94,6 +95,8 @@ async function handle(request, env, ctx) {
         { Authorization: "KakaoAK " + env.KAKAO_REST_KEY },
         조회결과_보관["/kakao/"]);
     }
+
+    if(path==='/navi/screenshot')return routeCaptureResponse(request,env);
 
     // ── 카카오모빌리티 길찾기 ────────────────────────
     //    지도 모달의 편도 거리 자동 채움에 사용합니다.

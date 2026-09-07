@@ -307,9 +307,7 @@ button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 <div><label for="via">경유지 (선택)</label><input id="via" type="text" placeholder="여러 곳이면 ; 로 구분"></div>
 <div><label for="to">도착지</label><input id="to" type="text" placeholder="경기 화성시 발안로 1"></div>
 </div>
-<!-- 왕복 여부는 사용자가 켜고 끄는 값이 아니라, 모달에서 '왕복으로 적용' 했을 때만
-     붙는 표시입니다. 직접 넣은 거리는 그 성격을 알 수 없으므로 아무 말도 하지 않습니다. -->
-<input id="rt" type="checkbox" hidden>
+<label class="ck" style="margin-top:14px"><input id="rt" type="checkbox"> <b>왕복</b> · 조회한 편도 거리 × 2</label>
 <p class="note" id="rtnote" style="display:none"></p>
 <div class="row">
 <button id="chkaddr" class="p route-action">① 주소 확인하고 다음으로 →</button>
@@ -317,12 +315,12 @@ button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 </div>
 <div id="addrbox" class="addrbox"></div>
 <div class="row" id="omaprow">
-<button class="p2 route-action" id="omap">② 지도에서 경로 · 거리 확인 →</button>
+<button class="p route-action" id="autoroute">경로 자동조회</button>
+<button class="p2 route-action" id="omap">지도에서 직접 경로 확인하기</button>
 </div>
-<p class="note" id="hint1">지도에서 경로를 조회해 <b>화면을 캡처</b>하세요.
-주행거리 칸에는 <b>실제로 달린 총 거리</b>가 들어갑니다 — 왕복이면 지도에서 확인한 편도 거리에
-<b>왕복으로 적용</b>을 켜면 2배로 넣어 줍니다.</p>
-<p class="note" id="stat"></p>
+<p class="note" id="hint1">자동조회하면 카카오맵의 거리와 지도 캡처가 함께 들어갑니다. 약 20~40초 걸릴 수 있습니다.
+왕복은 같은 경로로 돌아오는 경우에 선택하세요. 통행료·주차료는 실제 합계 금액을 입력하세요.</p>
+<p class="note" id="stat" role="status"></p>
 <div id="help" style="display:none;border:1px solid var(--ln);border-radius:8px;padding:14px 16px;margin-top:12px;background:#fbfcfc"></div>
 </section>
 
@@ -465,7 +463,7 @@ button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 <div><label for="ovkm">편도 거리 (km)</label><input id="ovkm" type="number" step="0.1" min="0" placeholder="65.2"></div>
 </div>
 <p class="note" id="ovkmnote" style="margin-top:8px"></p>
-<label class="ck"><input id="ovrt" type="checkbox"> <b>왕복으로 적용</b> — 주행거리를 2배로 넣습니다 (통행료·주차료는 실비라 그대로입니다)</label>
+<p class="note" id="ovrtinfo">왕복 여부는 메인 화면의 경로에서 선택합니다.</p>
 <div id="ovcalc" class="calcbox"></div>
 </div>
 
@@ -540,7 +538,7 @@ button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 <script src="config.js" onerror="void 0"></script>
 <script>
 "use strict";
-var VERSION="v5.8";   // 화면을 고칠 때마다 올립니다 (사용자가 반영 여부를 확인하는 표시)
+var VERSION="v5.9";   // 화면을 고칠 때마다 올립니다 (사용자가 반영 여부를 확인하는 표시)
 var G="#009178", G_DK="#00705F", R="#DC231E",
     // 증빙 서식(캔버스)은 결재 문서 관행에 맞춰 맑은 고딕으로 고정합니다.
     FONT='"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif';
@@ -558,21 +556,18 @@ function addrs(){
 
 /* ---------- 계산 ---------- */
 function round10(v,mode){ return JachaCalc.round10(v,mode); }
-/* ----- 왕복 표기 -----
-   '왕복' 은 계산에 쓰는 값이 아니라 주행거리가 어떻게 만들어졌는지에 대한 기록입니다.
-   모달에서 '왕복으로 적용' 을 켜고 반영했을 때만 남고, 사용자가 주행거리를 직접
-   고치면 그 순간 근거가 사라지므로 표시도 지웁니다. */
-var RT_INFO=null;   // {편도: 65.2} 또는 null
+/* 왕복 선택과 실제 반영 기록은 분리합니다. 조회한 편도 거리만 재계산하고,
+   사용자가 직접 입력한 총 거리는 왕복을 선택해도 다시 곱하지 않습니다. */
+var RT_INFO=null, ROUTE_BASE=null, ROUTE_REQUEST=0, ROUTE_BUSY=false;
 
 function 왕복표기갱신(){
   var e=$("rtnote");
-  $("rt").checked=!!RT_INFO;
   if(!RT_INFO){ e.style.display="none"; e.textContent=""; return; }
   e.style.display="";
   e.innerHTML="<b>왕복 반영됨</b> — 편도 "+RT_INFO.편도.toFixed(1)
     +" km × 2 = 총 "+(RT_INFO.편도*2).toFixed(1)+" km";
 }
-function 왕복표기해제(){ if(RT_INFO){ RT_INFO=null; 왕복표기갱신(); scheduleDraw(); } }
+function 왕복표기해제(){ ROUTE_REQUEST++; ROUTE_BASE=null; RT_INFO=null; 왕복표기갱신(); scheduleDraw(); }
 
 function calc(){
   var values={inc:$("inc").checked, mode:$("rnd").value};
@@ -1295,8 +1290,8 @@ function setMode(){
   }
   if(SRV.addr||SRV.oil){
     b.className="badge on"; b.textContent="조회 가능";
-    $("lead").textContent="지도에서 경로를 확인해 캡처하고, 유가는 증빙 버튼을 누르면 자동으로 채워집니다. "
-      + "입력값은 서버로 보내지 않고 이 브라우저에만 12시간 임시 보관되며, '비우기' 를 누르면 지워집니다.";
+    $("lead").textContent="경로 자동조회는 거리와 지도 증빙을, 유가 증빙 버튼은 유가와 조회 증빙을 함께 채웁니다. "
+      + "입력 내용은 이 브라우저에 12시간 임시 보관되며, '비우기' 를 누르면 지워집니다.";
   }else{
     b.className="badge"; b.textContent="직접 입력 모드";
     $("lead").textContent="지금은 거리와 유가를 직접 넣는 모드입니다. 계산과 증빙 만들기는 그대로 됩니다.";
@@ -1374,7 +1369,8 @@ function 주소항목(){
   return out;
 }
 
-$("chkaddr").addEventListener("click",function(){
+async function 주소확인(){
+  var addressKey=경로키();
   var items=주소항목();
   if(!items.length){ alert("주소를 먼저 입력하세요."); return; }
   $("chkaddr").disabled=true;
@@ -1383,18 +1379,20 @@ $("chkaddr").addEventListener("click",function(){
   $("addrbox").className="addrbox on";
   $("addrbox").innerHTML='<div class="arow">주소를 확인하는 중…</div>';
 
-  Promise.all(items.map(function(it){
+  return Promise.all(items.map(function(it){
     return searchPlaces(it.raw).then(
       function(cs){ it.cands=cs; it.err=null; return it; },
       function(e){ it.cands=[]; it.err=(e&&e.message)||"조회 실패"; return it; });
   })).then(function(res){
+    if(addressKey!==경로키())return;
     ADDR=res.map(function(it){
       it.pick = it.cands.length===1 ? it.cands[0] : null;
       return it;
     });
     renderAddr();
   })["finally"](function(){ $("chkaddr").disabled=false; 경로단계갱신(true); });
-});
+}
+$("chkaddr").addEventListener("click",주소확인);
 
 function renderAddr(){
   var box=$("addrbox");
@@ -1450,12 +1448,14 @@ function renderAddr(){
 
   box.querySelectorAll('input[type=radio]').forEach(function(r){
     r.addEventListener("change",function(){
+      경로변경();
       ADDR[+r.getAttribute("data-i")].pick=ADDR[+r.getAttribute("data-i")].cands[+r.getAttribute("data-c")];
       renderAddr();
     });
   });
   box.querySelectorAll("[data-re]").forEach(function(b){
     b.addEventListener("click",function(){
+      경로변경();
       ADDR[+b.getAttribute("data-re")].pick=null;
       renderAddr();
     });
@@ -1488,15 +1488,15 @@ function 경로단계갱신(강제){
   if(상태==="확정"){
     ok.className="done route-action";
     ok.innerHTML='<span class="chk">✓</span>주소 확인됨';
-    map.className="p route-action";
-    map.innerHTML='② 지도에서 경로 · 거리 확인<span class="arw">→</span>';
+    map.className="p2 route-action";
+    map.textContent='지도에서 직접 경로 확인하기';
     cue.className="cue on";
-    cue.textContent="주소가 정해졌습니다 · 다음은 지도에서 경로 확인";
+    cue.textContent="주소가 정해졌습니다 · 자동조회 또는 지도에서 직접 확인하세요";
     return;
   }
 
   ok.className="p route-action"; ok.textContent="① 주소 확인하고 다음으로 →";
-  map.className="p2 route-action"; map.innerHTML="② 지도에서 경로 · 거리 확인";
+  map.className="p2 route-action"; map.textContent="지도에서 직접 경로 확인하기";
   if(상태==="처음"){ cue.className="cue on"; cue.textContent="출발지·도착지를 입력한 뒤 주소를 확인하세요"; return; }
   cue.className="cue on wait";
   cue.textContent = 상태==="고르는중" ? "아래에서 주소를 골라 주세요"
@@ -1571,7 +1571,7 @@ function ovLock(잠금,라벨){
 
 function ovOpen(mode){
   OVMODE = mode || "route";
-  var 제목={route:"네이버 빠른길찾기로 경로 확인",
+  var 제목={route:"지도에서 직접 경로 확인하기",
             toll :"통행료 증빙 넣기",
             park :"주차료 증빙 넣기",
             oil  :"유가 확인·증빙 넣기"};
@@ -1647,7 +1647,7 @@ function ovFillRoute(){
           버튼("네이버 빠른길찾기 열기", false, function(){ ovMapOpen("naver"); }) ];
   OVBTN.forEach(function(b){ b.className="p2"; });
 
-  $("ovrt").checked = $("rt").checked;
+  $("ovrtinfo").textContent=$("rt").checked?"왕복 선택됨 · 편도 거리를 두 배로 반영합니다. 변경은 메인 화면의 경로에서 할 수 있습니다.":"편도로 반영합니다. 왕복 여부는 메인 화면의 경로에서 선택하세요.";
   $("ovkm").value="";
   $("ovkmnote").textContent="";
   ovCalc();
@@ -1673,6 +1673,77 @@ function ovFillRoute(){
    지도 화면(네이버 등)은 다른 회사 사이트라 그 안의 숫자를 읽어올 수 없어,
    같은 조건으로 카카오 길찾기(RECOMMEND, 우선 경로)에 한 번 더 물어봅니다.
    값이 다를 수 있으니 지도 화면 값이 우선이라고 안내하고, 실패하면 조용히 넘어갑니다. */
+function 경로키(){return [$("from").value.trim(),$("via").value.trim(),$("to").value.trim()].join("\n");}
+function 경로거리반영(km,source){
+  ROUTE_BASE={km:km,key:경로키(),source:source};
+  var rt=$("rt").checked;
+  $("km").value=Math.round(km*(rt?2:1)*10)/10;
+  RT_INFO=rt?{편도:km}:null;
+  SRC.route="주행거리: "+source+(rt?" (편도 "+km+" km × 왕복)":" (편도)");
+  왕복표기갱신();초안즉시저장();draw();
+}
+function 자동경로증빙제거(){
+  var old=SHOT.map.length;SHOT.map=SHOT.map.filter(function(it){return !it.autoMap;});
+  if(old!==SHOT.map.length)renderSlot("map");
+}
+function 경로변경(){
+  ROUTE_REQUEST++;자동경로증빙제거();
+  if(ROUTE_BASE){$("km").value="";SRC.route=SRC_DEFAULT.route;}
+  ROUTE_BASE=null;RT_INFO=null;왕복표기갱신();$("stat").textContent="";
+}
+async function 경로웹캡처(cs,names){
+  var ac=new AbortController(),timer=setTimeout(function(){ac.abort();},55000);
+  try{
+    var rt=cs.map(function(c){return toWcong(c.x,c.y).join(',');}).join(',');
+    var res=await fetch('/navi/screenshot?rt='+rt+'&names='+encodeURIComponent(JSON.stringify(names)),{signal:ac.signal});
+    var km=Number(res.headers.get('x-route-km'));
+    if(!res.ok||res.headers.get('content-type')!=='image/png'||!Number.isFinite(km)||km<=0||km>3000)throw new Error('지도 캡처를 받지 못했습니다');
+    var blob=await res.blob();if(!blob.size||blob.size>8*1024*1024)throw new Error('지도 이미지 크기 오류');
+    var image=await new Promise(function(resolve,reject){
+      var reader=new FileReader();reader.onerror=function(){reject(new Error('지도 이미지 읽기 실패'));};
+      reader.onload=function(){var im=new Image();im.onload=function(){resolve(im);};im.onerror=function(){reject(new Error('지도 이미지 열기 실패'));};im.src=reader.result;};reader.readAsDataURL(blob);
+    });
+    return {km:km,image:image};
+  }finally{clearTimeout(timer);}
+}
+async function 경로자동조회(){
+  if(ROUTE_BUSY)return;
+  if(!$("from").value.trim()||!$("to").value.trim()){$("stat").textContent="출발지와 도착지를 입력해 주세요.";return;}
+  ROUTE_BUSY=true;var b=$("autoroute"),id=++ROUTE_REQUEST,key=경로키(),cs;
+  b.disabled=true;b.textContent="주소 확인 중…";
+  function current(){return id===ROUTE_REQUEST&&key===경로키();}
+  try{
+    cs=확정좌표();
+    if(!cs){await 주소확인();if(!current())return;cs=확정좌표();}
+    if(!cs){$("stat").textContent="아래 주소 후보를 선택한 뒤 경로 자동조회를 눌러 주세요.";return;}
+    if(cs.length>7){$("stat").textContent="자동조회는 경유지 5곳까지 지원합니다. 지도에서 직접 확인해 주세요.";return;}
+    var chosen=JSON.stringify(cs);
+    var stillCurrent=function(){return current()&&JSON.stringify(확정좌표())===chosen;};
+    b.textContent="지도 조회 · 캡처 중…";$("stat").textContent="카카오맵에서 경로와 거리를 확인하고 있습니다…";
+    var r;
+    try{r=await 경로웹캡처(cs,cs.map(function(c,i){return c.nm||addrs()[i];}));}
+    catch(e){
+      if(!stillCurrent())return;
+      var km=await 자동거리(cs);if(!stillCurrent())return;
+      자동경로증빙제거();경로거리반영(km,"카카오모빌리티 API 추천 경로 · 지도 증빙 미첨부");
+      $("stat").textContent="거리 "+$("km").value+" km 입력 완료. 지도 캡처는 받지 못했습니다. ‘지도에서 직접 경로 확인하기’에서 확인·첨부해 주세요.";
+      return;
+    }
+    if(!stillCurrent())return;
+    var it=새장();it.full=r.image;it.use=r.image;it.autoMap=true;SHOT.map=[it];renderSlot("map");
+    경로거리반영(r.km,"카카오맵 자동차 경로 웹화면 자동조회");
+    $("dtShot").open=true;
+    $("stat").textContent="✓ "+($("rt").checked?"왕복 ":"편도 ")+$("km").value+" km 입력 · 지도 증빙 1장 첨부 완료";
+  }catch(e){if(current())$("stat").textContent="경로를 조회하지 못했습니다. 다시 시도하거나 ‘지도에서 직접 경로 확인하기’를 이용해 주세요.";}
+  finally{ROUTE_BUSY=false;b.disabled=false;b.textContent="경로 자동조회";}
+}
+$("autoroute").addEventListener("click",경로자동조회);
+$("rt").addEventListener("change",function(){
+  if(ROUTE_BASE&&ROUTE_BASE.key===경로키())경로거리반영(ROUTE_BASE.km,ROUTE_BASE.source);
+  else{$("stat").textContent="다음 경로 조회부터 "+($("rt").checked?"왕복":"편도")+"으로 반영합니다. 직접 입력한 총 거리는 그대로 유지합니다.";초안즉시저장();}
+});
+["from","via","to"].forEach(function(id){$(id).addEventListener("input",경로변경);});
+
 function 자동거리(cs){
   if(!cs||cs.length<2)return Promise.reject(new Error("좌표가 모자랍니다"));
   var q="origin="+cs[0].x+","+cs[0].y
@@ -1686,13 +1757,15 @@ function 자동거리(cs){
     var r=j&&j.routes&&j.routes[0];
     if(!r||r.result_code!==0)throw new Error((r&&r.result_msg)||"경로를 찾지 못했습니다");
     var m=r.summary&&r.summary.distance;
-    if(!(m>0))throw new Error("거리를 받지 못했습니다");
+    if(!Number.isFinite(m)||m<=0)throw new Error("거리를 받지 못했습니다");
     return Math.round(m/100)/10;      // m → km, 0.1km 단위
   });
 }
 
 function 거리채우기(cs){
+  var key=경로키();
   자동거리(cs).then(function(km){
+    if(key!==경로키()||OVMODE!=="route"||OVXY!==cs||$("ov").className!=="ov on")return;
     if($("ovkm").value)return;        // 직접 넣은 값은 건드리지 않습니다
     $("ovkm").value=km;
     ovCalc();
@@ -2134,7 +2207,7 @@ function 초안즉시저장(){
   DRAFT_FIELDS.forEach(function(k){var el=$(k); if(el)f[k]=el.value;});
   try{
     localStorage.setItem(DRAFT_KEY,JSON.stringify({v:2,t:Date.now(),f:f,
-      rt:RT_INFO?{편도:RT_INFO.편도}:null,src:SRC,oil:OIL_OK}));
+      rt:RT_INFO?{편도:RT_INFO.편도}:null,roundTrip:$("rt").checked,routeBase:ROUTE_BASE,src:SRC,oil:OIL_OK}));
   }catch(e){}
 }
 function 초안저장(){
@@ -2164,6 +2237,9 @@ function 초안복구(){
   });
   OIL_OK=d.v===2 && d.oil && d.oil.d===$("date").value && d.oil.f===$("oil").value ? d.oil : null;
   RT_INFO = (d.rt && Number.isFinite(d.rt.편도) && d.rt.편도>0 && Math.abs(d.rt.편도*2-N("km"))<0.051) ? {편도:d.rt.편도} : null;
+  $("rt").checked=typeof d.roundTrip==='boolean'?d.roundTrip:!!RT_INFO;
+  if(d.routeBase&&Number.isFinite(d.routeBase.km)&&d.routeBase.km>0&&d.routeBase.key===경로키()&&Math.abs(d.routeBase.km*($("rt").checked?2:1)-N("km"))<0.051)ROUTE_BASE=d.routeBase;
+  else if(RT_INFO)ROUTE_BASE={km:RT_INFO.편도,key:경로키(),source:"길찾기 화면 직접 확인"};
   왕복표기갱신();
   $("draftbar").className="on";
   draw();
@@ -2450,14 +2526,14 @@ function bindCapDrag(){
 
 /* ----- 거리 계산 미리보기 ----- */
 function ovCalc(){
-  var km=parseFloat($("ovkm").value), rt=$("ovrt").checked, box=$("ovcalc");
+  var km=parseFloat($("ovkm").value), rt=$("rt").checked, box=$("ovcalc");
   if(!(km>0)){ box.className="calcbox"; box.textContent=""; return; }
   box.className="calcbox on";
   box.innerHTML = rt
     ? "왕복 적용 — 주행거리 <b>"+km.toFixed(1)+" km × 2 = "+(km*2).toFixed(1)+" km</b>"
     : "편도 그대로 — 주행거리 <b>"+km.toFixed(1)+" km</b>";
 }
-["ovkm","ovrt"].forEach(function(i){
+["ovkm"].forEach(function(i){
   $(i).addEventListener("input",ovCalc);
   $(i).addEventListener("change",ovCalc);
 });
@@ -2484,13 +2560,9 @@ $("ovuse").addEventListener("click",function(){
   }
 
   if(OVMODE==="route"){
-    var km=parseFloat($("ovkm").value), rt=$("ovrt").checked;
-    if(km>0){
-      $("km").value=Math.round((rt?km*2:km)*10)/10;
-      RT_INFO = rt ? {편도:km} : null;
-      왕복표기갱신();
-      SRC.route="주행거리: 길찾기 화면 직접 확인"
-        + (rt?" (편도 "+km.toFixed(1)+" km × 왕복)":" (편도)");
+    var km=parseFloat($("ovkm").value), rt=$("rt").checked;
+    if(Number.isFinite(km)&&km>0){
+      ROUTE_REQUEST++; 경로거리반영(km,"길찾기 화면 직접 확인");
       적용.push(rt?"왕복 거리":"편도 거리");
     }
   }else if(OVMODE==="toll"){
@@ -2539,6 +2611,7 @@ $("ov").addEventListener("click",function(e){ if(e.target===$("ov"))ovClose(); }
 document.addEventListener("keydown",function(e){ if(e.key==="Escape"&&!$("receiptview").open)ovClose(); });
 
 $("omap").addEventListener("click",function(){
+  ROUTE_REQUEST++;
   지도열어봤다=true; 경로단계갱신(true);      // 한 번 열었으면 물결은 거둡니다
   var a=addrs();
   if(a.length && navigator.clipboard && navigator.clipboard.writeText){
@@ -2692,6 +2765,7 @@ $("prt").addEventListener("click",function(){
 });
 
 $("smp").addEventListener("click",function(){
+  경로변경();$("rt").checked=false;
   유가증빙제거();
   OIL_REQUEST++; OIL_OK=null; RT_INFO=null; 왕복표기갱신(); SRC=Object.assign({},SRC_DEFAULT);
   $("date").value="2026-08-14"; $("name").value="홍길동"; $("dept").value="기술운영1팀";
@@ -2706,6 +2780,7 @@ $("smp").addEventListener("click",function(){
   초안즉시저장(); draw();
 });
 $("clr").addEventListener("click",function(){
+  ROUTE_REQUEST++;ROUTE_BASE=null;$("rt").checked=false;
   qrStop(); ovClose(); capReset();
   // 고정된 항목은 건드리지 않습니다
   ["name","dept","purp","from"].forEach(function(i){ if(!pinOn(i))$(i).value=""; });
@@ -2735,7 +2810,7 @@ document.querySelectorAll("input,select").forEach(function(el){
   }
 });
 // 직접 고친 거리는 왕복인지 알 수 없으므로 표기를 거둡니다
-$("km").addEventListener("input",function(){왕복표기해제(); SRC.route=SRC_DEFAULT.route;});
+$("km").addEventListener("input",function(){왕복표기해제();자동경로증빙제거(); SRC.route=SRC_DEFAULT.route;});
 ["price","date","oil"].forEach(function(k){$(k).addEventListener("input",function(){
   유가증빙제거(); OIL_REQUEST++; OIL_OK=null; SRC.oil=SRC_DEFAULT.oil; $("stat2").textContent="";
 });});
