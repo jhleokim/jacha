@@ -1,7 +1,7 @@
 /*
  * 자차보조금 정산 — Cloudflare Worker
  *
- * 두 가지 일을 합니다.
+ * 세 가지 일을 합니다.
  *   1) public/ 안의 화면(index.html, config.js)을 웹사이트로 제공
  *   2) 브라우저 대신 카카오·오피넷 API를 호출 (CORS 우회 + 키 보호)
  *   3) 영수증 정리기(receipt)의 사진 릴레이를 중계 (폰 → PC 증빙 사진)
@@ -15,20 +15,30 @@ const 조회결과_보관 = {
   "/kakao/": 60 * 60 * 24 * 180,   // 주소의 좌표는 잘 안 바뀝니다
   "/navi/":  60 * 60 * 24 * 30,    // 통행료 변경을 감안해 30일
   "/opinet/": 60 * 60 * 24 * 7,
-  "/tmap/":  60 * 60 * 24 * 30,
 };
 
 function json(obj, status = 200) {
   return new Response(JSON.stringify(obj), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8" },
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
   });
 }
 
-async function 대신호출(request, target, headers, ttl) {
+function validOil(body) {
+  try {
+    const rows=JSON.parse(new TextDecoder().decode(body).replace(/^\uFEFF/, "")).RESULT?.OIL;
+    return Array.isArray(rows) && rows.length>0 && rows.every(row =>
+      Number.isFinite(Number(row.PRICE)) && Number(row.PRICE)>0 && /^\d{8}$/.test(row.DATE));
+  } catch { return false; }
+}
+
+async function 대신호출(request, target, headers, ttl, validate = null) {
   const req = new Request(target, { method: "GET", headers });
   const cache = caches.default;
-  const cacheKey = new Request(target, { method: "GET" });
+  // 새 검증 정책의 키 공간으로 옮겨 기존 빈 응답 캐시를 재사용하지 않습니다.
+  const cacheUrl=new URL(request.url);
+  cacheUrl.searchParams.set("_cache_version", "2");
+  const cacheKey = new Request(cacheUrl, { method: "GET" });
 
   let res = await cache.match(cacheKey);
   if (res) {
@@ -40,25 +50,39 @@ async function 대신호출(request, target, headers, ttl) {
   const upstream = await fetch(req, { cf: { cacheTtl: 0 } });
   const body = await upstream.arrayBuffer();
 
+  const cacheable=upstream.ok && (!validate || validate(body));
   res = new Response(body, {
     status: upstream.status,
     headers: {
       "content-type": upstream.headers.get("content-type") || "application/json; charset=utf-8",
-      "cache-control": `public, max-age=${ttl}`,
+      "cache-control": cacheable ? `public, max-age=${ttl}` : "no-store",
       "x-cache": "MISS",
     },
   });
 
-  if (upstream.ok) {
+  if (cacheable) {
     await cache.put(cacheKey, res.clone());
   }
   return res;
 }
 
-export default {
-  async fetch(request, env, ctx) {
+async function handle(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
+
+    const api=/^\/(kakao|navi|opinet|tmap|receipt)\//.test(path);
+    const allowed=new Set([
+      "/kakao/v2/local/search/address.json", "/kakao/v2/local/search/keyword.json",
+      "/navi/v1/directions", "/opinet/price", "/receipt/poll"
+    ]);
+    if(api){
+      if(!allowed.has(path))return json({error:"not_found"},404);
+      if(request.method!=="GET")return new Response(null,{status:405,headers:{allow:"GET","cache-control":"no-store"}});
+      // 다른 웹사이트의 브라우저 호출 차단. 이것은 사용자 인증을 대신하지 않습니다.
+      const origin=request.headers.get("origin");
+      if((origin && origin!==url.origin) || request.headers.get("sec-fetch-site")==="cross-site")
+        return json({error:"forbidden_origin"},403);
+    }
 
     // ── 카카오 주소·장소 검색 ─────────────────────────
     if (path.startsWith("/kakao/")) {
@@ -70,7 +94,7 @@ export default {
     }
 
     // ── 카카오모빌리티 길찾기 ────────────────────────
-    //    (현재 화면에서는 쓰지 않습니다. 자동 거리 조회를 되살릴 때를 위해 남겨둡니다)
+    //    지도 모달의 편도 거리 자동 채움에 사용합니다.
     if (path.startsWith("/navi/")) {
       if (!env.KAKAO_REST_KEY) return json({ error: "카카오 키가 등록되지 않았습니다" }, 500);
       const target = "https://apis-navi.kakaomobility.com" + path.replace("/navi", "") + url.search;
@@ -79,47 +103,7 @@ export default {
         조회결과_보관["/navi/"]);
     }
 
-    // ── TMAP 자동차 경로안내 ─────────────────────────
-    //    (현재 화면에서는 쓰지 않습니다. 자동 거리 조회를 되살릴 때를 위해 남겨둡니다)
-    if (path === "/tmap/routes") {
-      if (!env.TMAP_KEY) return json({ error: "TMAP 키가 등록되지 않았습니다" }, 500);
-      const target = "https://apis.openapi.sk.com/tmap/routes?version=1";
-      const body = await request.text();
-
-      // POST 라 캐시 키를 본문으로 만듭니다
-      const cacheKey = new Request(
-        "https://cache.local/tmap?" + encodeURIComponent(body),
-        { method: "GET" }
-      );
-      const cache = caches.default;
-      let hit = await cache.match(cacheKey);
-      if (hit) {
-        hit = new Response(hit.body, hit);
-        hit.headers.set("x-cache", "HIT");
-        return hit;
-      }
-
-      const up = await fetch(target, {
-        method: "POST",
-        headers: {
-          appKey: env.TMAP_KEY,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body,
-      });
-      const buf = await up.arrayBuffer();
-      const res = new Response(buf, {
-        status: up.status,
-        headers: {
-          "content-type": "application/json; charset=utf-8",
-          "cache-control": `public, max-age=${조회결과_보관["/tmap/"]}`,
-          "x-cache": "MISS",
-        },
-      });
-      if (up.ok) await cache.put(cacheKey, res.clone());
-      return res;
-    }
+    // 사용하지 않는 TMAP 프록시는 외부 키 호출 범위를 줄이기 위해 제거했습니다.
 
     // ── 오피넷 유가 ──────────────────────────────────
     if (path === "/opinet/price") {
@@ -128,7 +112,7 @@ export default {
       p.set("out", "json");
       p.set("code", env.OPINET_KEY);
       const target = "https://www.opinet.co.kr/api/avgRecentPrice.do?" + p.toString();
-      return 대신호출(request, target, {}, 조회결과_보관["/opinet/"]);
+      return 대신호출(request, target, {}, 조회결과_보관["/opinet/"], validOil);
     }
 
     // ── 모바일 → PC 사진 가져오기 (영수증 정리기 릴레이 중계) ──
@@ -141,7 +125,7 @@ export default {
     if (path === "/receipt/poll") {
       const s = url.searchParams.get("s") || "";
       // 세션 ID 형식만 통과시켜 아무 주소나 중계되지 않게 막습니다
-      if (!/^[0-9a-fA-F-]{8,40}$/.test(s)) return json({ error: "bad_session" }, 400);
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s)) return json({ error: "bad_session" }, 400);
       try {
         const up = await env.RECEIPT.fetch(
           "https://receipt/api/poll?s=" + encodeURIComponent(s),
@@ -161,5 +145,18 @@ export default {
 
     // ── 그 밖에는 화면 파일 ──────────────────────────
     return env.ASSETS.fetch(request);
-  },
+}
+
+export default {
+  async fetch(request, env, ctx) {
+    let response;
+    try { response=await handle(request,env,ctx); }
+    catch { response=json({error:"upstream_unavailable"},502); }
+    const safe=new Response(response.body,response);
+    safe.headers.set("X-Content-Type-Options","nosniff");
+    safe.headers.set("Referrer-Policy","strict-origin-when-cross-origin");
+    if(/^\/(kakao|navi|opinet|tmap|receipt)\//.test(new URL(request.url).pathname))
+      safe.headers.set("Content-Security-Policy","default-src 'none'; frame-ancestors 'none'");
+    return safe;
+  }
 };

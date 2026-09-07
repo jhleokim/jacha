@@ -20,3 +20,7 @@ service = "receipt"
 
 [observability]
 enabled = true
+
+# Workers Builds에서도 검증 실패 시 배포하지 않습니다.
+[build]
+command = "npm run verify"
