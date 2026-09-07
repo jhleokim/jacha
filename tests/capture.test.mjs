@@ -17,7 +17,7 @@ test('capture verifies selected day and correct product column including LPG sho
 test('browser always closes after screenshot or a verification failure',async()=>{
   for(const fail of [false,true]){
     let closed=0,captured=0,evals=0;
-    const page={setDefaultTimeout(){},setDefaultNavigationTimeout(){},async setViewport(){},async goto(){return {ok:()=>true};},async waitForSelector(){},async select(){},async $$eval(){return [];},async click(){},async waitForNavigation(){},url:()=>query().url,
+    const page={setDefaultTimeout(){},setDefaultNavigationTimeout(){},async setViewport(){},async goto(){return {ok:()=>true};},async waitForSelector(){},async waitForFunction(){},async select(){},async $$eval(){return [];},async click(){},async waitForNavigation(){},url:()=>query().url,
       async evaluate(fn,arg){if(arg)return;evals++;return evals===1?{...snapshot,start:fail?'20000101':snapshot.start}:evals===3?1200:undefined;},async screenshot(){captured++;return new Uint8Array([137,80,78,71]);}};
     const launch=async()=>({newPage:async()=>page,close:async()=>{closed++;}});
     if(fail)await assert.rejects(renderOpinet({},query(),launch),/mismatch/);else assert.equal((await renderOpinet({},query(),launch)).price,1859.33);

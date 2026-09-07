@@ -31,31 +31,39 @@ export async function renderOpinet(binding,q,launch){
     const page=await browser.newPage();
     page.setDefaultTimeout(12000);page.setDefaultNavigationTimeout(18000);
     await page.setViewport({width:1280,height:1000,deviceScaleFactor:1});
-    const response=await page.goto(q.url,{waitUntil:'networkidle2'}).catch(error=>{
+    const response=await page.goto(q.url,{waitUntil:'domcontentloaded'}).catch(error=>{
       if(error.name!=='TimeoutError')throw error;
       return null; // Background widgets may keep loading; verify the actual form below.
     });
     if(response&&!response.ok())throw new Error('capture_page_unavailable');
     await page.waitForSelector('#STA_Y');
     stage='conditions';
-    // Set the entire form together: date change handlers can otherwise reset later fields.
+    // Fire the site's period handler before setting dates, since it resets them.
     await page.evaluate(({date,fuel})=>{
+      const daily=document.querySelector('input[name="TERM"][value="D"]');
+      if(!daily.checked)daily.click();
       for(const prefix of ['STA','END'])for(const [part,value] of [['Y',date.slice(0,4)],['M',date.slice(4,6)],['D',date.slice(6,8)]]){
         const field=document.getElementById(prefix+'_'+part);
         field.value=value;if(field.value!==value)throw new Error('capture_date_not_selectable');
       }
-      document.querySelector('input[name="TERM"][value="D"]').checked=true;
-      if(fuel!=='K015')document.querySelectorAll('input[type="checkbox"][name^="OIL_CD_"]').forEach(e=>{e.checked=e.name==='OIL_CD_'+fuel;});
+      // Click to update Opinet's selected-product count as well as the checkbox.
+      if(fuel!=='K015')document.querySelectorAll('input[type="checkbox"][name^="OIL_CD_"]').forEach(e=>{if(e.checked!==(e.name==='OIL_CD_'+fuel))e.click();});
     },{date:q.date,fuel:q.fuel});
     // Use the site's own form and query handler. Never rewrite result text or prices.
     stage='query';
     await Promise.all([
-      page.waitForNavigation({waitUntil:'networkidle2'}).catch(error=>{if(error.name!=='TimeoutError')throw error;}),
+      page.waitForNavigation({waitUntil:'domcontentloaded'}).catch(error=>{if(error.name!=='TimeoutError')throw error;}),
       page.click(q.fuel==='K015'?'#dopVsAvselSelect':'#btn_search')
     ]);
     if(new URL(page.url()).origin!==ORIGIN)throw new Error('capture_unexpected_page');
     stage='verify';
-    await page.waitForSelector('table.tbl_type10 tbody tr');
+    await page.waitForFunction(date=>{
+      const selected=['STA_Y','STA_M','STA_D'].map(id=>document.getElementById(id)?.value).join('');
+      return document.readyState==='complete'&&selected===date&&[...document.querySelectorAll('table.tbl_type10 tbody tr')].some(row=>{
+        const m=/^(\d{2}|\d{4})년(\d{1,2})월(\d{1,2})일$/.exec((row.querySelector('th,td')?.innerText||'').replace(/\s/g,''));
+        return m&&(m[1].length===2?'20'+m[1]:m[1])+m[2].padStart(2,'0')+m[3].padStart(2,'0')===date;
+      });
+    },{},q.date);
     const snapshot=await page.evaluate(()=>({
       start:['STA_Y','STA_M','STA_D'].map(id=>document.getElementById(id)?.value).join(''),
       end:['END_Y','END_M','END_D'].map(id=>document.getElementById(id)?.value).join(''),
@@ -74,7 +82,7 @@ export async function renderOpinet(binding,q,launch){
     const png=await page.screenshot({type:'png',fullPage:true});
     return {png,price};
   }catch(error){throw new Error(stage+': '+error.message);}
-  finally{clearTimeout(deadline);await browser.close();}
+  finally{clearTimeout(deadline);await browser.close().catch(()=>{});}
 }
 
 export async function captureResponse(request,env,ctx,render=renderOpinet){
