@@ -45,7 +45,7 @@ details>.body{padding:0 24px 22px}
 .quiet-details>.body{padding:0 0 12px}
 #addressDetails .row{margin-top:10px}.cue.on{font-size:12px}.addrbox{margin-top:14px}
 .arow{overflow-wrap:anywhere}.cand{min-height:44px}
-.claim-summary{position:sticky;top:24px}
+.claim-summary{position:sticky;top:24px;max-height:calc(100dvh - 48px);overflow-y:auto;scrollbar-width:thin}
 .summary-card{border:1px solid var(--ln);background:#fff;border-radius:14px;padding:24px}
 .summary-card h2{font-size:15px;color:var(--ink-2);margin:0}.claim-total{font-size:31px;letter-spacing:-.04em;font-weight:700;line-height:1.3;margin:10px 0 0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .claim-breakdown{font-size:13px;margin:22px 0 0;padding:18px 0;border-top:1px solid var(--ln);border-bottom:1px solid var(--ln)}
@@ -54,7 +54,7 @@ details>.body{padding:0 24px 22px}
 .evidence-check{height:auto;min-height:40px;display:flex;justify-content:space-between;gap:8px;align-items:center;width:100%;padding:7px 0;border:0;border-radius:4px;font-size:13px;text-align:left;background:none}
 .evidence-check span:last-child{font-size:12px;color:var(--mu);text-align:right}.evidence-check[data-state=attached] span:last-child{color:#00705f}.evidence-check[data-state=missing] span:last-child{color:#8a5a13}
 .evidence-check:hover{background:#f4f7f5}
-.review-link{display:flex;align-items:center;justify-content:space-between;min-height:44px;margin-top:17px;background:#eaf3ee;border:1px solid #cfe2d6;border-radius:8px;text-decoration:none;color:#176046;padding:0 13px;font-size:14px;font-weight:600}.review-link:hover{background:#dfede4}
+.review-link{display:flex;width:100%;align-items:center;justify-content:space-between;min-height:44px;margin-top:17px;background:#eaf3ee;border:1px solid #cfe2d6;border-radius:8px;text-decoration:none;color:#176046;padding:0 13px;font-size:14px;font-weight:600}.review-link:hover{background:#dfede4}
 .storage-note{font-size:11.5px;margin-top:17px}
 #review .export-actions{margin-top:15px}#review h2{margin-bottom:10px}#reviewHint{font-size:13px}
 .preview-title{font-size:14px;font-weight:600;margin:0}.restart{margin:0 10px}.restart>summary{font-size:12px}
@@ -68,11 +68,11 @@ details>.body{padding:0 24px 22px}
 body.modal-open{overflow:hidden}.mobile-review{display:none}
 .skip-link{position:fixed;left:16px;top:-80px;background:#fff;color:#00614f;padding:12px;z-index:10000}.skip-link:focus{top:12px}
 @media(max-width:960px){
- .workbench{grid-template-columns:minmax(0,1fr)}.claim-summary{position:static}.summary-card{padding:22px}.storage-note{max-width:560px}
+ .workbench{grid-template-columns:minmax(0,1fr)}.claim-summary{position:static;max-height:none;overflow:visible}.summary-card{padding:22px}.storage-note{max-width:560px}
  body{padding-bottom:calc(100px + env(safe-area-inset-bottom))}
  .mobile-review{position:fixed;z-index:40;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:12px;background:#fff;border-top:1px solid var(--ln);padding:12px max(20px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom));box-shadow:0 -4px 20px #18312408}
  .mobile-review>div{display:flex;flex-direction:column;min-width:0}.mobile-review span{font-size:11px;color:var(--ink-2)}.mobile-review b{font-size:19px;line-height:1.4;overflow-wrap:anywhere}
- .mobile-review a{color:#fff;background:var(--g);border-radius:8px;font-size:14px;text-decoration:none;white-space:nowrap;display:flex;align-items:center;justify-content:center;min-width:106px;min-height:44px;padding:0 16px}
+ .mobile-review button{color:#fff;background:var(--g);border-radius:8px;font-size:14px;text-decoration:none;white-space:nowrap;display:flex;align-items:center;justify-content:center;min-width:106px;min-height:44px;padding:0 16px}
  .modal-open .mobile-review{display:none}#review{scroll-margin-bottom:100px}
  body:has(input[type=text]:focus,input[type=number]:focus,input[type=date]:focus) .mobile-review{display:none}
 }
@@ -88,6 +88,13 @@ body.modal-open{overflow:hidden}.mobile-review{display:none}
  .receipt-view{width:calc(100vw - 20px)}.slot{padding:12px}.shotcard{padding:10px}.claim-total{font-size:28px}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.toll-review{width:min(480px,calc(100vw - 32px));max-height:calc(100dvh - 32px);margin:auto;padding:28px;border:1px solid var(--ln);border-radius:16px;color:var(--ink);background:#fff;box-shadow:0 18px 64px #182b2526;font-family:var(--font);overflow-y:auto}
+.toll-review::backdrop{background:rgba(16,26,22,.42)}.toll-review .eyebrow{margin:0 34px 10px 0}
+.toll-review h2{font-size:21px;line-height:1.4;margin:0 22px 18px 0}.toll-review p{font-size:15px;line-height:1.75;margin:0 0 14px;word-break:keep-all}
+.toll-review #tollReviewQuestion{font-weight:500;margin-bottom:20px}.toll-review .note{font-size:13px}
+.toll-review-close{position:absolute;right:14px;top:12px;width:36px;height:36px;padding:0;border:0;background:transparent;font-size:24px}
+.toll-review-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:24px}.toll-review-actions button{min-height:44px;height:auto;padding:11px 15px}
+@media(max-width:480px){.toll-review{padding:24px 20px}.toll-review-actions{display:grid;grid-template-columns:1fr}.toll-review-actions button{width:100%}.toll-review h2{font-size:20px}}
 /* Korean type: readable labels and consistent real weights, including dialogs. */
 body{font-size:16px;line-height:1.65;letter-spacing:-.015em;font-synthesis:none;word-break:keep-all;overflow-wrap:anywhere}
 h1{letter-spacing:-.025em}h2{font-size:20px;font-weight:600;letter-spacing:-.02em}
