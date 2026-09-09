@@ -264,9 +264,12 @@ button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 .receipt-view.zoomed img{width:100%;max-height:none}
 @media(max-width:440px){.qr-code{flex-basis:140px}#qrcv{width:140px}.qr-help{min-width:140px}.qr-gallery{grid-template-columns:minmax(0,1fr)}.qr-preview{height:230px}}
 </style>
+<link rel="stylesheet" href="renewal.css">
 </head>
 <body>
-<div class="wrap">
+<a class="skip-link" href="#route">경로 입력으로 건너뛰기</a>
+<div class="wrap" data-renewal="6.0">
+<p class="eyebrow">출장 정산</p>
 
 <h1>자차보조금 정산 <span class="badge" id="mode">확인 중…</span><span class="ver" id="ver"></span></h1>
 <p class="lead" id="lead">입력한 내용은 이 브라우저 안에서만 처리됩니다.</p>
@@ -292,8 +295,10 @@ button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 </div>
 </div>
 
-<section>
-<h2>출장 정보</h2>
+<nav class="steps" aria-label="정산 순서"><a href="#trip"><span>1</span>출장 정보</a><a href="#route"><span>2</span>경로</a><a href="#costs"><span>3</span>비용·증빙</a><a href="#review"><span>4</span>검토·저장</a></nav>
+<div class="workbench"><main>
+<section id="trip">
+<h2><span class="step-no">01</span>출장 정보</h2>
 <div class="g">
 <div>
 <div class="fh"><label for="date">출장일자</label>
@@ -316,8 +321,8 @@ button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 이 브라우저에만 저장되며, 12시간 넘게 열지 않으면 스스로 지워집니다.</p>
 </section>
 
-<section>
-<h2>경로</h2>
+<section id="route">
+<h2><span class="step-no">02</span>경로</h2>
 <div class="g">
 <div>
 <div class="fh"><label for="from">출발지</label>
@@ -326,55 +331,49 @@ button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 <div><label for="via">경유지 (선택)</label><input id="via" type="text" placeholder="여러 곳이면 ; 로 구분"></div>
 <div><label for="to">도착지</label><input id="to" type="text" placeholder="경기 화성시 발안로 1"></div>
 </div>
-<label class="ck" style="margin-top:14px"><input id="rt" type="checkbox"> <b>왕복</b> · 조회한 편도 거리 × 2</label>
-<p class="note" id="rtnote" style="display:none"></p>
-<div class="row">
-<button id="chkaddr" class="p route-action">① 주소 확인하고 다음으로 →</button>
-<span class="cue" id="nextcue" aria-live="polite"></span>
+<div class="route-distance">
+<div><label for="km">정산할 총 거리 (km)</label><input id="km" type="number" step="0.1" min="0" placeholder="자동조회 또는 직접 입력" aria-describedby="rtnote"></div>
+<div class="trip-direction"><label class="ck"><input id="rt" type="checkbox"> <b>왕복</b></label><span class="note">같은 경로로 돌아와요 · 조회 거리 × 2</span></div>
 </div>
-<div id="addrbox" class="addrbox"></div>
+<p class="note" id="rtnote" style="display:none"></p>
 <div class="row" id="omaprow">
 <button class="p route-action" id="autoroute">경로 자동조회</button>
 <button class="p2 route-action" id="omap">지도에서 직접 경로 확인하기</button>
+<button class="cancel-action" id="routecancel" hidden>조회 취소</button>
 </div>
-<p class="note" id="hint1">자동조회하면 카카오맵의 거리와 지도 캡처가 함께 들어갑니다. 약 20~40초 걸릴 수 있습니다.
-왕복은 같은 경로로 돌아오는 경우에 선택하세요. 통행료·주차료는 실제 합계 금액을 입력하세요.</p>
-<p class="note" id="stat" role="status"></p>
+<p class="note" id="hint1">거리와 실제 지도 캡처를 함께 가져옵니다. 약 20~40초 걸릴 수 있어요.</p>
+<p class="lookup-status" id="stat" role="status"></p>
+<details id="addressDetails" class="quiet-details">
+<summary id="addressSummary">주소 직접 확인·선택</summary><div class="body">
+<p class="note">같은 이름의 장소가 여러 곳이면 정확한 주소를 골라 주세요.</p>
+<div class="row"><button id="chkaddr" class="route-action">주소 확인</button><span class="cue" id="nextcue" aria-live="polite"></span></div>
+<div id="addrbox" class="addrbox"></div>
+</div></details>
 <div id="help" style="display:none;border:1px solid var(--ln);border-radius:8px;padding:14px 16px;margin-top:12px;background:#fbfcfc"></div>
 </section>
 
-<section>
-<h2>조회값</h2>
-<div class="g">
+<section id="costs">
+<h2><span class="step-no">03</span>비용·증빙</h2>
+<div class="fuel-fields">
 <div><label for="oil">유종</label><select id="oil"><option>휘발유</option><option>경유</option><option>LPG</option></select></div>
-<div><label for="km">주행거리 (km)</label><input id="km" type="number" step="0.1" min="0" placeholder="156.8"></div>
-<div>
-<div class="fh crowded"><label for="price">유가 (원/L)</label>
-<span class="fhbtns">
-<button type="button" class="pin" id="oilshot"><i></i>증빙 자동 첨부</button>
-<button type="button" class="mini" id="oilmanual">직접 확인</button>
-</span></div>
-<input id="price" type="number" step="1" min="0" placeholder="1652"></div>
-<div>
-<div class="fh crowded"><label for="toll">통행료 (원)</label>
-<span class="fhbtns">
-<button type="button" class="pin" id="tollshot"><i></i>증빙</button>
-</span></div>
-<input id="toll" type="number" step="10" min="0" value="0"></div>
-<div>
-<div class="fh crowded"><label for="park">주차료 (원)</label>
-<span class="fhbtns">
-<button type="button" class="pin" id="parkshot"><i></i>증빙</button>
-</span></div>
-<input id="park" type="number" step="10" min="0" value="0"></div>
+<div><label for="price">유가 (원/L)</label><input id="price" type="number" step="1" min="0" placeholder="자동조회 또는 직접 입력"></div>
 </div>
-<p class="note" id="hint2">유가 옆 <b>증빙 자동 첨부</b>를 누르면 유가를 채우고 <b>오피넷 실제 조회화면을 자동 캡처</b>해 첨부합니다. 처음에는 약 20~40초 걸릴 수 있으며, 캡처가 안 되면 조회값을 정리한 자료를 대신 첨부하고 알려드립니다.</p>
-<p class="note" id="stat2" role="status" aria-live="polite"></p>
-<p class="note">조회가 안 되면 지도·오피넷에서 확인한 값을 직접 넣으셔도 됩니다.</p>
+<div class="row">
+<button type="button" class="p" id="oilshot">유가 조회·증빙 첨부</button>
+<button type="button" id="oilmanual">직접 확인</button>
+<button class="cancel-action" id="oilcancel" hidden>조회 취소</button>
+</div>
+<p class="note" id="hint2">출장일 기준 유가와 오피넷 화면을 가져옵니다. 캡처가 어려우면 조회값 정리 자료로 첨부하고 알려드려요.</p>
+<p class="lookup-status" id="stat2" role="status"></p>
+<div class="expense-fields">
+<div class="expense-card"><label for="toll">통행료 (원)</label><input id="toll" type="number" step="10" min="0" value="0"><button type="button" id="tollshot" aria-label="통행료 영수증 가져오기">영수증 가져오기</button></div>
+<div class="expense-card"><label for="park">주차료 (원)</label><input id="park" type="number" step="10" min="0" value="0"><button type="button" id="parkshot" aria-label="주차료 영수증 가져오기">영수증 가져오기</button></div>
+</div>
+<p class="note">영수증 사진을 넣으면 금액을 읽어 채웁니다. 통행료·주차료는 왕복을 포함한 실제 합계로 확인해 주세요.</p>
 </section>
 
-<section>
-<h2>계산 산식</h2>
+<details id="formulaDetails">
+<summary>계산 내역 보기</summary><div class="body">
 <div class="fxwrap">
 <pre class="f" id="fx" style="padding-left:42px">주행거리와 유가를 입력하세요.</pre>
 <button type="button" class="cpbtn" id="cp1" title="자차보조금 산식 복사" style="display:none">
@@ -386,7 +385,7 @@ button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 </div>
 <div class="toast" id="toast"></div>
 <p class="note warn" id="err"></p>
-</section>
+</div></details>
 
 <details id="dtStd">
 <summary>정산 기준</summary>
@@ -404,10 +403,9 @@ button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 </details>
 
 <details id="dtShot">
-<summary>첨부된 증빙 · 캡처 추가 (선택)</summary>
+<summary>첨부된 증빙 <span id="evidenceCount" class="count">0장</span></summary>
 <div class="body">
-<p class="note" style="margin-top:0">지도나 오피넷 화면을 <kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> 로 캡처한 뒤,
-아래 칸을 클릭하고 <kbd>Ctrl</kbd>+<kbd>V</kbd> 를 누르세요. (Mac은 <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>4</kbd>)</p>
+<p class="note" style="margin-top:0">사진을 확인하고 자르거나 강조할 수 있어요. 파일 선택이나 붙여넣기로 증빙을 더 넣을 수도 있습니다.</p>
 
 <div class="slot" id="s_map">
 <h3>경로 캡처 <span id="t_map">비어 있음</span></h3>
@@ -441,7 +439,7 @@ button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 </div>
 </details>
 
-<div class="ov" id="ov">
+<dialog class="ov" id="ov" aria-labelledby="ovtitle">
 <div class="mo">
 <header>
 <h3 id="ovtitle">경로 확인</h3>
@@ -472,12 +470,13 @@ button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 <div id="qrthumbs" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--ln)"></div>
 </div>
 
-<div class="ovstep" style="margin-top:18px"><span>3</span>결과 화면 캡처 <em>방금 연 창을 고르세요</em></div>
+<details id="captureDetails" class="quiet-details"><summary>화면 캡처로 추가하기 (선택)</summary><div class="body">
 <div class="shotbox" id="ovshot">
 <button class="p" id="ovcap">화면 캡처</button>
 <p class="note" id="ovmsg" style="margin-top:10px">모바일 환경에서는 연결된 앱에서 캡처 후 하단 '파일에서 고르기'로 스크린샷을 선택바랍니다.</p>
 </div>
 
+</div></details>
 <div id="ovroute">
 <div class="ovstep" style="margin-top:18px"><span>4</span>거리 입력 <em>자동조회된 거리는 카카오맵 길찾기 첫번째 경로기준 거리입니다.</em></div>
 <div class="g" style="margin-top:8px">
@@ -523,11 +522,17 @@ button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 <button id="ovclose">닫기</button>
 </footer>
 </div>
-</div>
+</dialog>
 
-<section>
+<section id="review" tabindex="-1">
+<h2><span class="step-no">04</span>검토·저장</h2>
+<p class="note" id="reviewHint">거리와 유가를 입력하면 정산서를 저장할 수 있어요.</p>
+<div class="row export-actions"><button class="p" id="prt">PDF로 저장</button><button id="png">PNG로 저장</button></div>
+<p class="note" id="pginfo" role="status"></p>
+<p class="note warn" id="exportError" role="alert"></p>
+<details id="previewDetails" class="quiet-details"><summary>정산서 미리보기·크기 조절</summary><div class="body">
 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:15px">
-<h2 style="margin:0">증빙 미리보기</h2>
+<h3 class="preview-title">정산서 미리보기</h3>
 <div style="display:flex;gap:18px;flex-wrap:wrap">
 <label style="margin:0;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2)">
 글씨 <input id="fsz" type="range" min="80" max="130" step="5" value="100" style="width:110px;height:auto;padding:0">
@@ -538,17 +543,26 @@ button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 </div>
 </div>
 <div id="pages"></div>
-<div class="row">
-<button class="p" id="prt">PDF로 저장</button>
-<button class="p" id="png">PNG로 저장</button>
-<button id="smp">샘플값</button>
-<button id="clr">비우기</button>
-</div>
-<p class="note" id="pginfo"></p>
-<p class="note">1장은 텍스트, 2장부터 증빙 이미지가 한 장씩 들어갑니다.
-실제 지급액은 사내 여비규정 및 결재권자 승인에 따릅니다.</p>
+</div></details>
+<p class="note">첫 장은 정산 내역, 다음 장부터 첨부한 증빙이 들어갑니다.<br>실제 지급액은 사내 여비규정 및 결재권자 승인에 따릅니다.</p>
 </section>
-
+<details class="quiet-details restart"><summary>새 정산 시작·샘플 보기</summary><div class="body"><p class="note">비우기는 고정한 항목을 남기고 입력값과 증빙을 지웁니다.</p><div class="row"><button id="smp">샘플값 넣기</button><button id="clr">비우기</button></div></div></details>
+</main>
+<aside class="claim-summary" aria-label="청구 요약">
+<div class="summary-card">
+<p class="eyebrow">이번 출장</p><h2>청구 합계</h2>
+<p class="claim-total" id="claimTotal">—</p><p class="note" id="claimHint">거리와 유가를 입력해 주세요.</p>
+<dl class="claim-breakdown"><div><dt>자차보조금</dt><dd id="claimSub">—</dd></div><div><dt>통행료</dt><dd id="claimToll">0 원</dd></div><div><dt>주차료</dt><dd id="claimPark">0 원</dd></div></dl>
+<div class="summary-evidence"><h3>증빙 확인 <span id="claimCount" class="count">0장</span></h3>
+<button id="checkMap" class="evidence-check"><span>경로</span><span id="checkMapState">미첨부</span></button>
+<button id="checkOil" class="evidence-check"><span>유가</span><span id="checkOilState">미첨부</span></button>
+<button id="checkToll" class="evidence-check"><span>통행료</span><span id="checkTollState">지출 없음</span></button>
+<button id="checkPark" class="evidence-check"><span>주차료</span><span id="checkParkState">지출 없음</span></button>
+</div><a href="#review" class="review-link">검토·저장 <span aria-hidden="true">↗</span></a>
+<p class="note storage-note">입력값은 이 브라우저에 12시간 보관됩니다. 증빙 사진은 새로고침하면 사라지므로 저장해 주세요.</p>
+</div></aside>
+</div>
+<div class="mobile-review"><div><span>청구 합계</span><b id="mobileTotal">—</b></div><a href="#review">검토하기</a></div>
 </div>
 
 <script src="qr.js" onerror="void 0"></script>
@@ -594,7 +608,7 @@ function 왕복표기갱신(){
   e.innerHTML="<b>왕복 반영됨</b> — 편도 "+RT_INFO.편도.toFixed(1)
     +" km × 2 = 총 "+(RT_INFO.편도*2).toFixed(1)+" km";
 }
-function 왕복표기해제(){ ROUTE_REQUEST++; ROUTE_BASE=null; RT_INFO=null; 왕복표기갱신(); scheduleDraw(); }
+function 왕복표기해제(){ 조회취소("route",false); ROUTE_REQUEST++; ROUTE_BASE=null; RT_INFO=null; 왕복표기갱신(); scheduleDraw(); }
 
 function calc(){
   var values={inc:$("inc").checked, mode:$("rnd").value};
@@ -604,9 +618,11 @@ function calc(){
 var CPTXT={sub:"", total:""};
 
 function showFx(s){
-  $("err").textContent=s.err;
+  청구요약갱신(s);
+  var empty=!$("km").value||!$("price").value;
+  $("err").textContent=empty?"":s.err;
   if(s.err){
-    $("fx").textContent="입력값을 확인하세요: "+s.err;
+    $("fx").textContent=empty?"주행거리와 유가를 입력하면 계산 내역이 표시됩니다.":"입력값을 확인하세요: "+s.err;
     $("cp1").style.display="none"; $("cp2").style.display="none";
     return;
   }
@@ -639,6 +655,69 @@ function showFx(s){
   $("cp1").style.top=(위+줄높이*0-3)+"px";
   $("cp2").style.top=(위+줄높이*5-3)+"px";
 }
+
+/* ---------- v6.0: summary, recovery and cancellable lookup jobs ---------- */
+function 청구요약갱신(s){
+  var total=s.err?"—":WON(s.total);
+  $("claimTotal").textContent=total;$("mobileTotal").textContent=total;
+  $("claimSub").textContent=s.err?"—":WON(s.sub);
+  $("claimToll").textContent=s.inc?WON(s.toll):"별도 청구";
+  $("claimPark").textContent=s.inc?WON(s.park):"별도 청구";
+  var missing=[], count=0;
+  [["map","Map","경로"],["oil","Oil","유가"],["toll","Toll","통행료"],["park","Park","주차료"]].forEach(function(v){
+    var n=장수(v[0]), required=v[0]==="map"||v[0]==="oil"||N(v[0])>0;
+    count+=n;if(!n&&required)missing.push(v[2]);
+    var state=n?"attached":required?"missing":"empty";
+    var label=n?n+"장 첨부":required?"미첨부":"지출 없음";
+    if(n&&v[0]==="oil"&&SHOT.oil.some(function(it){return it.autoOil&&!it.webOil;}))label="조회값 자료";
+    $("check"+v[1]).setAttribute("data-state",state);
+    $("check"+v[1]+"State").textContent=label;
+    $("check"+v[1]).setAttribute("aria-label",v[2]+" 증빙 · "+label+" · 확인하기");
+  });
+  $("claimCount").textContent=count+"장";$("evidenceCount").textContent=count+"장";
+  $("claimHint").textContent=s.err?(!$("km").value||!$("price").value?"거리와 유가를 입력해 주세요.":"입력한 숫자를 확인해 주세요."):(s.inc?"통행료·주차료 포함":"통행료·주차료 별도 청구");
+  $("reviewHint").textContent=s.err?"거리와 유가를 입력하면 정산서를 저장할 수 있어요.":missing.length?missing.join("·")+" 증빙이 아직 없습니다. 저장 전 첨부 여부를 확인해 주세요.":"금액과 첨부된 증빙을 확인한 뒤 저장해 주세요.";
+  if(!s.err)$("exportError").textContent="";
+}
+[["checkMap","map"],["checkOil","oil"],["checkToll","toll"],["checkPark","park"]].forEach(function(v){
+  $(v[0]).addEventListener("click",function(){
+    $("dtShot").open=true;focusSlot(v[1]);$("s_"+v[1]).scrollIntoView({block:"center"});$("f_"+v[1]).focus({preventScroll:true});
+  });
+});
+function 저장입력확인(s){
+  if(!s.err)return true;
+  var fields=[["주행거리","km"],["유가","price"],["고정연비","fe"],["가산율","rate"],["통행료","toll"],["주차료","park"],["원단위","rnd"]];
+  var target=fields.find(function(v){return s.err.indexOf(v[0])===0;})||fields[0];
+  var id=target[1],msg=$(id).value?target[0]+" 입력값을 확인해 주세요.":target[0]+"를 입력해 주세요.";
+  $("exportError").textContent=msg;
+  if(["fe","rate","rnd"].indexOf(id)>=0)$("dtStd").open=true;
+  $(id).setAttribute("aria-invalid","true");$(id).setAttribute("aria-describedby","exportError");
+  $(id).scrollIntoView({block:"center"});$(id).focus({preventScroll:true});
+  return false;
+}
+var LOOKUPS={route:null,oil:null}, ADDRESS_REQUEST=0;
+function 조회시작(kind){
+  var job={controller:new AbortController()};LOOKUPS[kind]=job;
+  $(kind+"cancel").hidden=false;
+  $(kind==="route"?"stat":"stat2").className="lookup-status busy";
+  return job;
+}
+function 조회끝(kind,job){
+  if(LOOKUPS[kind]!==job)return;
+  LOOKUPS[kind]=null;$(kind+"cancel").hidden=true;
+  $(kind==="route"?"stat":"stat2").className="lookup-status";
+  if(kind==="route"){ROUTE_BUSY=false;$("autoroute").disabled=false;$("autoroute").textContent="경로 자동조회";}
+  else{OIL_BUSY=false;$("oilshot").disabled=false;$("oilmanual").disabled=false;$("oilshot").textContent="유가 조회·증빙 첨부";}
+}
+function 조회취소(kind,announce){
+  var job=LOOKUPS[kind];if(!job)return;
+  if(kind==="route"){ROUTE_REQUEST++;ADDRESS_REQUEST++;$("chkaddr").disabled=false;경로단계갱신(true);}
+  else OIL_REQUEST++;
+  job.controller.abort();조회끝(kind,job);
+  if(announce)$(kind==="route"?"stat":"stat2").textContent="조회를 취소했습니다. 이미 입력된 값은 유지됩니다. 다시 조회할 수 있어요.";
+}
+$("routecancel").addEventListener("click",function(){조회취소("route",true);});
+$("oilcancel").addEventListener("click",function(){조회취소("oil",true);});
 
 /* ----- 복사 · 알림 ----- */
 var 알림타이머=null;
@@ -1347,8 +1426,7 @@ function setMode(){
   }
   if(SRV.addr||SRV.oil){
     b.className="badge on"; b.textContent="조회 가능";
-    $("lead").textContent="경로 자동조회는 거리와 지도 증빙을, 유가 증빙 버튼은 유가와 조회 증빙을 함께 채웁니다. "
-      + "입력 내용은 이 브라우저에 12시간 임시 보관되며, '비우기' 를 누르면 지워집니다.";
+    $("lead").textContent="경로와 증빙을 모으면, 정산서까지 한 번에.";
   }else{
     b.className="badge"; b.textContent="직접 입력 모드";
     $("lead").textContent="지금은 거리와 유가를 직접 넣는 모드입니다. 계산과 증빙 만들기는 그대로 됩니다.";
@@ -1427,11 +1505,11 @@ function 주소항목(){
 }
 
 async function 주소확인(){
-  var addressKey=경로키();
+  var addressKey=경로키(),addressRequest=++ADDRESS_REQUEST;
   var items=주소항목();
   if(!items.length){ alert("주소를 먼저 입력하세요."); return; }
   $("chkaddr").disabled=true;
-  $("chkaddr").className="p route-action"; $("chkaddr").textContent="주소 확인 중…";
+  $("chkaddr").className="route-action"; $("chkaddr").textContent="주소 확인 중…";
   경로단계=null;
   $("addrbox").className="addrbox on";
   $("addrbox").innerHTML='<div class="arow">주소를 확인하는 중…</div>';
@@ -1441,13 +1519,13 @@ async function 주소확인(){
       function(cs){ it.cands=cs; it.err=null; return it; },
       function(e){ it.cands=[]; it.err=(e&&e.message)||"조회 실패"; return it; });
   })).then(function(res){
-    if(addressKey!==경로키())return;
+    if(addressRequest!==ADDRESS_REQUEST||addressKey!==경로키())return;
     ADDR=res.map(function(it){
       it.pick = it.cands.length===1 ? it.cands[0] : null;
       return it;
     });
     renderAddr();
-  })["finally"](function(){ $("chkaddr").disabled=false; 경로단계갱신(true); });
+  })["finally"](function(){ if(addressRequest===ADDRESS_REQUEST){$("chkaddr").disabled=false; 경로단계갱신(true);} });
 }
 $("chkaddr").addEventListener("click",주소확인);
 
@@ -1537,28 +1615,12 @@ function 경로상태(){
 }
 
 function 경로단계갱신(강제){
-  var 상태=경로상태();
-  if(!강제 && 상태===경로단계)return;      // 같은 상태면 그대로 (물결이 다시 돌지 않게)
-  경로단계=상태;
-
-  var ok=$("chkaddr"), map=$("omap"), cue=$("nextcue");
-  if(상태==="확정"){
-    ok.className="done route-action";
-    ok.innerHTML='<span class="chk">✓</span>주소 확인됨';
-    map.className="p2 route-action";
-    map.textContent='지도에서 직접 경로 확인하기';
-    cue.className="cue on";
-    cue.textContent="주소가 정해졌습니다 · 자동조회 또는 지도에서 직접 확인하세요";
-    return;
-  }
-
-  ok.className="p route-action"; ok.textContent="① 주소 확인하고 다음으로 →";
-  map.className="p2 route-action"; map.textContent="지도에서 직접 경로 확인하기";
-  if(상태==="처음"){ cue.className="cue on"; cue.textContent="출발지·도착지를 입력한 뒤 주소를 확인하세요"; return; }
-  cue.className="cue on wait";
-  cue.textContent = 상태==="고르는중" ? "아래에서 주소를 골라 주세요"
-                  : 상태==="못찾음"   ? "찾지 못한 주소가 있습니다 · 도로명으로 다시 넣어 보세요"
-                  :                     "주소가 바뀌었습니다 · 다시 확인해 주세요";
+  var state=경로상태();if(!강제&&state===경로단계)return;경로단계=state;
+  $("chkaddr").className=(state==="확정"?"done ":"")+"route-action";
+  $("chkaddr").textContent=state==="확정"?"✓ 주소 확인됨":"주소 확인";
+  $("nextcue").className="cue on";
+  $("nextcue").textContent=state==="확정"?"이 주소로 조회합니다":state==="고르는중"?"아래에서 정확한 주소를 골라 주세요":state==="못찾음"?"도로명 주소로 다시 입력해 주세요":"자동조회할 때 주소도 함께 확인합니다";
+  if(state==="고르는중"||state==="못찾음")$("addressDetails").open=true;
 }
 
 ["from","via","to"].forEach(function(id){
@@ -1617,7 +1679,7 @@ function 유가자동조회(알림){
 /* ---------- 지도 팝업 + 화면 캡처 ---------- */
 var CAP=null, CAPSEL=null, CAPSC=1, OVXY=null;
 
-var OVMODE="route", OVBTN=[];
+var OVMODE="route", OVBTN=[], OV_SESSION=0;
 function ovLock(잠금,라벨){
   OVBTN.forEach(function(b,i){
     if(!b)return;
@@ -1627,7 +1689,10 @@ function ovLock(잠금,라벨){
 }
 
 function ovOpen(mode){
+  OV_SESSION++;
   OVMODE = mode || "route";
+  $("ovuse").textContent=OVMODE==="toll"||OVMODE==="park"?"확인하고 닫기":"이 내용으로 반영";
+  $("captureDetails").open=OVMODE==="route"||OVMODE==="oil";
   var 제목={route:"지도에서 직접 경로 확인하기",
             toll :"통행료 증빙 넣기",
             park :"주차료 증빙 넣기",
@@ -1650,7 +1715,8 @@ function ovOpen(mode){
   else if(OVMODE==="toll")ovFillToll();
   else if(OVMODE==="park")ovFillPark();
   else ovFillOil();
-  $("ov").className="ov on";
+  $("ov").className="ov on"; if(!$("ov").open)$("ov").showModal();
+  document.body.classList.add("modal-open");
   $("ovfiles").multiple=OVMODE==="toll"||OVMODE==="park";
   $("ovfiles").value="";$("ovfilestatus").textContent="";
   ReceiptEvidence.gallery();
@@ -1747,12 +1813,13 @@ function 자동경로증빙제거(){
   if(old!==SHOT.map.length)renderSlot("map");
 }
 function 경로변경(){
+  조회취소("route",false);ADDRESS_REQUEST++;$("chkaddr").disabled=false;
   ROUTE_REQUEST++;자동경로증빙제거();
   if(ROUTE_BASE){$("km").value="";SRC.route=SRC_DEFAULT.route;}
   ROUTE_BASE=null;RT_INFO=null;왕복표기갱신();$("stat").textContent="";
 }
-async function 경로웹캡처(cs,names){
-  var ac=new AbortController(),timer=setTimeout(function(){ac.abort();},55000);
+async function 경로웹캡처(cs,names,controller){
+  var ac=controller||new AbortController(),timer=setTimeout(function(){ac.abort();},55000);
   try{
     var rt=cs.map(function(c){return toWcong(c.x,c.y).join(',');}).join(',');
     var res=await fetch('/navi/screenshot?rt='+rt+'&names='+encodeURIComponent(JSON.stringify(names)),{signal:ac.signal});
@@ -1769,19 +1836,19 @@ async function 경로웹캡처(cs,names){
 async function 경로자동조회(){
   if(ROUTE_BUSY)return;
   if(!$("from").value.trim()||!$("to").value.trim()){$("stat").textContent="출발지와 도착지를 입력해 주세요.";return;}
-  ROUTE_BUSY=true;var b=$("autoroute"),id=++ROUTE_REQUEST,key=경로키(),cs;
-  b.disabled=true;b.textContent="주소 확인 중…";
-  function current(){return id===ROUTE_REQUEST&&key===경로키();}
+  ROUTE_BUSY=true;var job=조회시작("route"),b=$("autoroute"),id=++ROUTE_REQUEST,key=경로키(),cs;
+  b.disabled=true;b.textContent="주소 확인 중…";$("stat").textContent="출발지와 도착지 주소를 확인하고 있습니다…";
+  function current(){return LOOKUPS.route===job&&id===ROUTE_REQUEST&&key===경로키();}
   try{
     cs=확정좌표();
     if(!cs){await 주소확인();if(!current())return;cs=확정좌표();}
-    if(!cs){$("stat").textContent="아래 주소 후보를 선택한 뒤 경로 자동조회를 눌러 주세요.";return;}
+    if(!cs){$("stat").textContent="주소 후보를 선택한 뒤 경로 자동조회를 눌러 주세요.";$("addressDetails").open=true;$("addressSummary").focus();return;}
     if(cs.length>7){$("stat").textContent="자동조회는 경유지 5곳까지 지원합니다. 지도에서 직접 확인해 주세요.";return;}
     var chosen=JSON.stringify(cs);
     var stillCurrent=function(){return current()&&JSON.stringify(확정좌표())===chosen;};
     b.textContent="지도 조회 · 캡처 중…";$("stat").textContent="카카오맵에서 경로와 거리를 확인하고 있습니다…";
     var r;
-    try{r=await 경로웹캡처(cs,cs.map(function(c,i){return c.nm||addrs()[i];}));}
+    try{r=await 경로웹캡처(cs,cs.map(function(c,i){return c.nm||addrs()[i];}),job.controller);}
     catch(e){
       if(!stillCurrent())return;
       var km=await 자동거리(cs);if(!stillCurrent())return;
@@ -1792,14 +1859,13 @@ async function 경로자동조회(){
     if(!stillCurrent())return;
     var it=새장();it.full=r.image;it.use=r.image;it.autoMap=true;SHOT.map=[it];renderSlot("map");
     경로거리반영(r.km,"카카오맵 자동차 경로 웹화면 자동조회");
-    $("dtShot").open=true;
     $("stat").textContent="✓ "+($("rt").checked?"왕복 ":"편도 ")+$("km").value+" km 입력 · 지도 증빙 1장 첨부 완료";
   }catch(e){if(current())$("stat").textContent="경로를 조회하지 못했습니다. 다시 시도하거나 ‘지도에서 직접 경로 확인하기’를 이용해 주세요.";}
-  finally{ROUTE_BUSY=false;b.disabled=false;b.textContent="경로 자동조회";}
+  finally{조회끝("route",job);}
 }
 $("autoroute").addEventListener("click",경로자동조회);
 $("rt").addEventListener("change",function(){
-  if(ROUTE_BASE&&ROUTE_BASE.key===경로키())경로거리반영(ROUTE_BASE.km,ROUTE_BASE.source);
+  if(ROUTE_BASE&&ROUTE_BASE.key===경로키()){경로거리반영(ROUTE_BASE.km,ROUTE_BASE.source);$("stat").textContent=($("rt").checked?"왕복 ":"편도 ")+$("km").value+" km 반영 · "+(장수("map")?"첨부된 지도는 편도 기준입니다.":"지도 증빙을 추가해 주세요.");}
   else{$("stat").textContent="다음 경로 조회부터 "+($("rt").checked?"왕복":"편도")+"으로 반영합니다. 직접 입력한 총 거리는 그대로 유지합니다.";초안즉시저장();}
 });
 ["from","via","to"].forEach(function(id){$(id).addEventListener("input",경로변경);});
@@ -1919,9 +1985,9 @@ function ovMapOpen(which){
   var 딥 = url.indexOf("ADDRESS_POI")>=0 || url.indexOf("&rt=")>=0;
   var 경유수=a.length-2;
   var 안내;
-  if(!딥) 안내="빈 화면이 열렸습니다. 주소를 붙여넣어 조회한 뒤 3단계로 오세요.";
+  if(!딥) 안내="빈 화면이 열렸습니다. 주소를 붙여넣어 조회한 뒤 화면 캡처로 추가해 주세요.";
   else if(경유수>0) 안내="경유지 "+경유수+"곳을 포함한 경로로 열었습니다.";
-  else 안내="경로가 조회된 채로 열렸습니다. 거리를 확인하고 3단계로 오세요.";
+  else 안내="경로가 조회된 채로 열렸습니다. 거리를 확인하고 화면 캡처로 추가해 주세요.";
   ovWin(url, 안내, which==="naver" ? "네이버 지도 경로" : "카카오맵 경로");
 }
 
@@ -2209,7 +2275,7 @@ function opinetOpen(){
 
   $("ovxy").textContent = 오피넷조회일(r)+" 하루치 전국 평균가 조회 결과를 열었습니다."
     + (r.물러섬?" (출장일 값은 아직 공개 전이라 가장 가까운 날짜입니다)":"")
-    + " 옆에 뜬 캡처 창의 '현재 화면 캡처' 를 누르면 창 목록에서 골라 3단계로 바로 보냅니다.";
+    + " 옆에 뜬 캡처 창의 '현재 화면 캡처' 를 누르면 창 목록에서 골라 이 창으로 바로 가져옵니다.";
 }
 
 /* ----- 유가 모드 ----- */
@@ -2218,6 +2284,7 @@ function opinetOpen(){
 var OV_OIL_AUTO=null;
 
 function ovFillOil(){
+  var session=OV_SESSION;
   줄("출장일자", $("date").value || "(미입력)", false);
   줄("유종", $("oil").value, false);
   var 현재=$("price").value;
@@ -2235,6 +2302,7 @@ function ovFillOil(){
   // 들어오자마자 자동으로 조회해 채웁니다. 화면 캡처가 필요할 때만 아래 버튼을 쓰면 됩니다.
   $("ovs1sub").textContent="유가를 자동으로 조회하는 중…";
   유가자동조회().then(function(r){
+    if(session!==OV_SESSION||OVMODE!=="oil"||!$("ov").open)return;
     $("ovs1sub").textContent="자동 조회 완료 — "+r.유종+" "+KO(r.값)+" 원/L ("+r.날짜+" 전국 평균)";
     줄("자동 조회값", KO(r.값)+" 원/L  ·  "+r.날짜+" 기준"
        + (r.대체?" (출장일 값은 아직 공개 전)":""), false);
@@ -2247,8 +2315,9 @@ function ovFillOil(){
     }
     $("ovxy").textContent="유가는 이미 채워졌습니다. 증빙 화면이 필요하면 아래에서 열어 캡처하세요.";
   },function(e){
+    if(session!==OV_SESSION||OVMODE!=="oil"||!$("ov").open)return;
     $("ovs1sub").textContent="자동 조회 실패 — "+((e&&e.message)||"원인 불명");
-    $("ovxy").textContent="조회화면을 열어 값을 확인하고 4단계에 직접 넣으세요. "
+    $("ovxy").textContent="조회화면을 열어 값을 확인하고 아래 유가 입력칸에 넣으세요. "
       + "조회일 "+오피넷조회일(_r);
   });
 }
@@ -2476,10 +2545,10 @@ function ovWin(url, msg, 이름){
   try{ win.focus(); }catch(e){}
   capHelper(이름);
   $("ovxy").textContent = msg + (CAPWIN
-    ? " 옆에 뜬 캡처 창의 '현재 화면 캡처' 를 누르면 창 목록에서 골라 3단계로 바로 보냅니다."
+    ? " 옆에 뜬 캡처 창의 '현재 화면 캡처' 를 누르면 창 목록에서 골라 이 창으로 바로 가져옵니다."
     : " 캡처 창은 팝업이 막혀 열리지 않았습니다 — 아래 '화면 캡처' 를 쓰시거나 팝업을 허용해 주세요.");
 }
-function ovClose(){ qrStop(); 딸린창닫기(); $("ov").className="ov"; }
+function ovClose(){ OV_SESSION++;qrStop(); 딸린창닫기(); $("ov").className="ov"; if($("ov").open)$("ov").close(); document.body.classList.remove("modal-open"); }
 
 /* ----- 캡처 ----- */
 function capReset(){
@@ -2653,7 +2722,8 @@ $("ovuse").addEventListener("click",function(){
     }
   }
 
-  if(!적용.length){ alert("캡처하거나 값을 입력한 뒤 눌러 주세요."); return; }
+  if(!적용.length&&(OVMODE==="toll"||OVMODE==="park")&&장수(대상))적용.push("증빙 "+장수(대상)+"장");
+  if(!적용.length){ $("ovfilestatus").textContent="사진을 넣거나 금액을 입력해 주세요."; return; }
   초안즉시저장(); draw();
   ovClose();
   (OVMODE==="route" ? $("stat") : $("stat2")).textContent
@@ -2666,10 +2736,10 @@ $("ovfiles").addEventListener("change",function(e){
 $("ovx").addEventListener("click",ovClose);
 $("ovclose").addEventListener("click",ovClose);
 $("ov").addEventListener("click",function(e){ if(e.target===$("ov"))ovClose(); });
-document.addEventListener("keydown",function(e){ if(e.key==="Escape"&&!$("receiptview").open)ovClose(); });
+$("ov").addEventListener("cancel",function(e){e.preventDefault();ovClose();});
 
 $("omap").addEventListener("click",function(){
-  ROUTE_REQUEST++;
+  조회취소("route",false);ROUTE_REQUEST++;
   지도열어봤다=true; 경로단계갱신(true);      // 한 번 열었으면 물결은 거둡니다
   var a=addrs();
   if(a.length && navigator.clipboard && navigator.clipboard.writeText){
@@ -2681,7 +2751,7 @@ var OIL_BUSY=false;
 function 유가증빙제거(){
   if(SHOT.oil.some(function(it){return it.autoOil;})){
     SHOT.oil=SHOT.oil.filter(function(it){return !it.autoOil;}); renderSlot("oil");
-    if(!OIL_BUSY)$("oilshot").textContent="증빙 자동 첨부";
+    if(!OIL_BUSY)$("oilshot").textContent="유가 조회·증빙 첨부";
   }
 }
 
@@ -2715,8 +2785,8 @@ function 유가증빙그리기(r){
   t("실제 API 조회 결과를 정리한 자료입니다. 오피넷 웹 화면 캡처가 아닙니다.",736,22);
   return cv;
 }
-async function 유가웹캡처(r){
-  var ac=new AbortController(),timer=setTimeout(function(){ac.abort();},55000);
+async function 유가웹캡처(r,controller){
+  var ac=controller||new AbortController(),timer=setTimeout(function(){ac.abort();},55000);
   try{
     var url="/opinet/screenshot?date="+r.날짜.replace(/-/g,"")+"&prodcd="+FUEL[r.유종][1];
     var response=await fetch(url,{signal:ac.signal});
@@ -2734,32 +2804,26 @@ async function 유가웹캡처(r){
 }
 async function 유가증빙자동첨부(){
   if(OIL_BUSY)return;
-  OIL_BUSY=true;var b=$("oilshot");b.disabled=true;$("oilmanual").disabled=true;b.textContent="조회 · 첨부 중…";
-  var d=$("date").value,f=$("oil").value;
+  OIL_BUSY=true;var job=조회시작("oil"),b=$("oilshot");b.disabled=true;$("oilmanual").disabled=true;b.textContent="유가 조회 중…";
+  var d=$("date").value,f=$("oil").value,requestId;
+  function current(){return LOOKUPS.oil===job&&requestId===OIL_REQUEST&&d===$("date").value&&f===$("oil").value;}
   try{
-    var r=await 유가자동조회();
-    var requestId=OIL_REQUEST,cv,web=true;
-    b.textContent="웹화면 캡처 중…";
+    var promise=유가자동조회();requestId=OIL_REQUEST;
+    var r=await promise;if(!current())return;
+    var cv,web=true;b.textContent="웹화면 캡처 중…";
     $("stat2").textContent="유가 입력 완료 · 오피넷에서 "+r.날짜+" 기준 "+r.유종+" 화면을 열어 캡처하는 중…";
-    try{cv=await 유가웹캡처(r);}catch(e){web=false;cv=유가증빙그리기(r);}
-    if(requestId!==OIL_REQUEST||d!==$("date").value||f!==$("oil").value)return;
+    try{cv=await 유가웹캡처(r,job.controller);}catch(e){if(!current())return;web=false;cv=유가증빙그리기(r);}
+    if(!current())return;
     var it=새장();it.full=cv;it.use=cv;it.autoOil=true;it.webOil=web;
-    SHOT.oil=[it];renderSlot("oil");focusSlot("oil");$("dtShot").open=true;draw();
+    SHOT.oil=[it];renderSlot("oil");draw();
     $("stat2").textContent=web
       ? "✓ 유가 "+KO(r.값)+" 원/L 입력 · 오피넷 웹화면 증빙 1장 첨부 완료 ("+r.날짜+" 기준)"
       : "웹화면 캡처가 되지 않아 조회값 정리 자료로 증빙 1장 첨부 완료 ("+r.날짜+" 기준). 실제 화면은 ‘직접 확인’에서 캡처할 수 있습니다.";
-    b.textContent="✓ 증빙 다시 조회";
   }catch(e){
-    b.textContent="증빙 다시 시도";
-    if(d===$("date").value&&f===$("oil").value){
-      $("stat2").textContent=((e&&e.message)||"증빙 생성 실패")+" — 다시 시도하거나 오피넷에서 직접 확인해 주세요.";
-      $("oilmanual").hidden=false;
-    }
-  }finally{
-    OIL_BUSY=false;b.disabled=false;$("oilmanual").disabled=false;
-    if(b.textContent==="웹화면 캡처 중…")b.textContent="증빙 자동 첨부";
-  }
+    if(current())$("stat2").textContent=((e&&e.message)||"증빙 생성 실패")+" — 다시 시도하거나 오피넷에서 직접 확인해 주세요.";
+  }finally{조회끝("oil",job);}
 }
+
 $("oilshot").addEventListener("click",유가증빙자동첨부);
 $("oilmanual").addEventListener("click",function(){ovOpen("oil");});
 $("tollshot").addEventListener("click",function(){ ovOpen("toll"); });
@@ -2776,7 +2840,7 @@ function 모든페이지(){
 
 $("png").addEventListener("click",function(){
   var st=calc();
-  if(st.err){ alert(st.err); return; }
+  if(!저장입력확인(st))return;
   draw();
   var cs=모든페이지(), base="자차보조금정산_"
     +($("date").value||"").replace(/-/g,"")+"_"+($("name").value.trim()||"미입력");
@@ -2796,7 +2860,7 @@ $("png").addEventListener("click",function(){
 
 $("prt").addEventListener("click",function(){
   var st=calc();
-  if(st.err){ alert(st.err); return; }
+  if(!저장입력확인(st))return;
   draw();
   var w=window.open("","_blank");
   if(!w){ alert("팝업이 차단되었습니다. 주소창 오른쪽에서 허용해 주세요."); return; }
@@ -2823,6 +2887,7 @@ $("prt").addEventListener("click",function(){
 });
 
 $("smp").addEventListener("click",function(){
+  조회취소("oil",false);
   경로변경();$("rt").checked=false;
   유가증빙제거();
   OIL_REQUEST++; OIL_OK=null; RT_INFO=null; 왕복표기갱신(); SRC=Object.assign({},SRC_DEFAULT);
@@ -2838,6 +2903,7 @@ $("smp").addEventListener("click",function(){
   초안즉시저장(); draw();
 });
 $("clr").addEventListener("click",function(){
+  조회취소("route",false);조회취소("oil",false);ADDRESS_REQUEST++;$("chkaddr").disabled=false;$("addressDetails").open=false;$("exportError").textContent="";
   FILE_IMPORT_REVISION++;ReceiptEvidence.reset();
   ROUTE_REQUEST++;ROUTE_BASE=null;$("rt").checked=false;
   qrStop(); ovClose(); capReset();
@@ -2864,6 +2930,7 @@ $("clr").addEventListener("click",function(){
 
 document.querySelectorAll("input,select").forEach(function(el){
   if(el.type!=="file" && el.type!=="range"){
+    el.addEventListener("input",function(){el.setAttribute("aria-invalid","false");});
     el.addEventListener("input",scheduleDraw); el.addEventListener("change",scheduleDraw);
     el.addEventListener("input",초안저장); el.addEventListener("change",초안저장);
   }
@@ -2871,7 +2938,7 @@ document.querySelectorAll("input,select").forEach(function(el){
 // 직접 고친 거리는 왕복인지 알 수 없으므로 표기를 거둡니다
 $("km").addEventListener("input",function(){왕복표기해제();자동경로증빙제거(); SRC.route=SRC_DEFAULT.route;});
 ["price","date","oil"].forEach(function(k){$(k).addEventListener("input",function(){
-  유가증빙제거(); OIL_REQUEST++; OIL_OK=null; SRC.oil=SRC_DEFAULT.oil; $("stat2").textContent="";
+  조회취소("oil",false);유가증빙제거(); OIL_REQUEST++; OIL_OK=null; SRC.oil=SRC_DEFAULT.oil; $("stat2").textContent="";
 });});
 
 function 기준적용(){
@@ -2881,7 +2948,7 @@ if(CFG.기준){
   if(CFG.기준.가산율!==undefined)$("rate").value=CFG.기준.가산율;
   if(CFG.기준.원단위처리)$("rnd").value=CFG.기준.원단위처리;
   if(typeof CFG.기준.통행료_주차료_합계포함==="boolean")$("inc").checked=CFG.기준.통행료_주차료_합계포함;
-  $("stdnote").textContent="config.js 에서 불러온 값입니다. 여기서 바꾸면 이번 정산에만 적용됩니다.";
+  $("stdnote").textContent="기본 정산 기준입니다. 바꾸면 이번 정산에만 적용됩니다.";
 }
 }
 기준적용();
@@ -2892,7 +2959,7 @@ $("iszv").textContent="100%";
 $("date").value=오늘문자열();
 pinInit();
 초안복구();
-팝업초기검사();
+// Automatic lookup and file import need no popup permission; report actual blocking in context.
 focusSlot("map");
 setMode();
 경로단계갱신(true);
