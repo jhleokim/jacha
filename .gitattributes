@@ -1,2 +1,3 @@
 # Preserve upstream OCR assets byte-for-byte for the manifest verification.
 public/vendor/ocr/** -text
+public/fonts/*.woff2 -text

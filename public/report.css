@@ -1,0 +1,51 @@
+/* Shared by the on-screen preview and native-text A4 printing. */
+.report-document{--report-scale:1;color:#202a27;font-family:"Jacha Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:calc(11pt * var(--report-scale));font-weight:400;line-height:1.65;letter-spacing:0;font-synthesis:none;text-align:left;font-variant-numeric:tabular-nums}
+.report-document *{box-sizing:border-box}
+.report-sheet{background:#fff;padding:32px 36px;margin:0 0 18px;overflow-wrap:anywhere;word-break:keep-all;border:1px solid #dce2df;border-radius:2px}
+.report-heading{padding-bottom:16px;margin-bottom:18px;border-bottom:2px solid #1c5145}
+.report-heading p{font-size:calc(9pt * var(--report-scale));font-weight:600;color:#376354;margin:0 0 6px}
+.report-heading h1{display:block;margin:0 0 8px;font-size:calc(22pt * var(--report-scale));font-weight:700;letter-spacing:-.025em;line-height:1.3;color:#172820}
+.report-heading div{font-size:calc(10pt * var(--report-scale));color:#52605a}
+.report-document h2{display:block;margin:0 0 12px;font-size:calc(12pt * var(--report-scale));font-weight:600;letter-spacing:0;color:#203e32;line-height:1.5}
+.report-section{margin:0 0 20px}
+.report-facts{margin:0}.report-facts>div{display:grid;grid-template-columns:76px minmax(0,1fr);gap:14px;padding:3px 0;break-inside:avoid}
+.report-facts dt{color:#59645f;font-size:calc(10pt * var(--report-scale));font-weight:400}.report-facts dd{margin:0;min-width:0}
+.report-distance{margin:12px 0 0;padding-top:10px;border-top:1px solid #e4e8e6;font-weight:500}
+.report-formula{font-size:calc(10pt * var(--report-scale));color:#52605a;margin:0 0 12px;line-height:1.7}
+.report-costs{width:100%;border-collapse:collapse;table-layout:fixed;font-size:inherit}
+.report-costs th,.report-costs td{padding:8px 0;text-align:left;border-bottom:1px solid #e0e6e2;vertical-align:top;line-height:1.65;font-weight:400}
+.report-costs thead th{padding:7px 0;font-size:calc(9pt * var(--report-scale));font-weight:500;color:#58635d;border-top:1px solid #b9c8bf}
+.report-costs th:first-child{width:25%}.report-costs th:nth-child(2){width:46%}
+.report-costs td:nth-child(2){font-size:calc(10pt * var(--report-scale));color:#52605a;padding-right:12px}
+.report-costs .amount{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.report-total{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:12px;margin:20px 0;padding:14px 0;border-top:2px solid #263e32;border-bottom:1px solid #cbd5ce;break-inside:avoid}
+.report-total span{font-weight:600;font-size:calc(12pt * var(--report-scale))}.report-total strong{font-weight:700;font-size:calc(23pt * var(--report-scale));line-height:1.3;letter-spacing:-.015em}
+.report-sources{font-size:calc(9pt * var(--report-scale));line-height:1.6;color:#52605a}
+.report-sources h2{font-size:calc(10pt * var(--report-scale));margin-bottom:8px}.report-sources p{margin:2px 0}
+.report-evidence-heading{display:flex;align-items:baseline;justify-content:space-between;gap:16px;border-bottom:1px solid #b9c8bf;margin-bottom:18px;padding-bottom:12px}
+.report-evidence-heading h2{margin:0}.report-evidence-heading p{font-size:calc(9pt * var(--report-scale));color:#52605a;margin:0;white-space:nowrap}
+.report-evidence figure{margin:0 auto;max-width:100%}.report-evidence svg{display:block;width:100%;height:auto;max-height:240mm}
+.print-window{margin:0;background:#edf0ee}.print-window .report-document{max-width:210mm;margin:24px auto}
+.print-window .report-sheet{padding:14mm 10mm}.print-toolbar{padding:14px 24px;background:#fff;border-bottom:1px solid #d4ded7;font:15px/1.6 "Jacha Pretendard",sans-serif;display:flex;justify-content:space-between;gap:14px;align-items:center}
+.print-toolbar p{margin:0}.print-toolbar button{padding:10px 16px;border:1px solid #1c6554;border-radius:8px;background:#fff;color:#1c5145;font:500 15px "Jacha Pretendard",sans-serif;cursor:pointer;white-space:nowrap}
+@media screen and (max-width:600px){
+ .report-sheet{padding:22px 18px}.report-facts>div{grid-template-columns:62px minmax(0,1fr);gap:8px}
+ .report-heading h1{font-size:calc(19pt * var(--report-scale))}
+ .report-costs thead{display:none}.report-costs tbody{display:block}
+ .report-costs tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:12px 0;border-bottom:1px solid #e0e6e2}
+ .report-costs th,.report-costs td{width:auto!important;padding:0;border:0}
+ .report-costs td:nth-child(2){grid-column:1 / -1;grid-row:2;padding:0}.report-costs .amount{grid-column:2;grid-row:1}
+ .report-total strong{font-size:calc(21pt * var(--report-scale))}.report-evidence-heading{flex-wrap:wrap;gap:6px}
+ .print-toolbar{padding:12px;flex-wrap:wrap}.print-window .report-sheet{padding:24px 18px}
+}
+@page{size:A4;margin:14mm 15mm}
+@media print{
+ html,body.print-window{background:#fff;margin:0;padding:0}
+ .print-toolbar{display:none}
+ .print-window .report-document{max-width:none;margin:0}
+ .print-window .report-sheet{padding:0;margin:0;border:0;border-radius:0}
+ .report-sheet+.report-sheet{break-before:page}
+ .report-heading{break-inside:avoid}.report-document h2{break-after:avoid}
+ .report-costs thead{display:table-header-group}.report-costs tr,.report-sources p{break-inside:avoid}
+ .report-evidence{break-inside:avoid}.report-evidence svg{max-height:237mm}
+}

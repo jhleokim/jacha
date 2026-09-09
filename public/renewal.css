@@ -1,5 +1,5 @@
 /* v6.0: a calm working surface, with the claim and evidence always in context. */
-:root{--g:#007d69;--mu:#606e68;--bg:#f4f6f5;--ln:#e0e6e2;--radius:9px;--font:"Pretendard",-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","맑은 고딕",sans-serif}
+:root{--g:#007d69;--mu:#606e68;--bg:#f4f6f5;--ln:#e0e6e2;--radius:9px;--font:"Jacha Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif}
 html{scroll-padding-top:24px}
 body{padding:38px 24px 56px;font-size:15px}
 .wrap{max-width:1180px}
@@ -88,3 +88,28 @@ body.modal-open{overflow:hidden}.mobile-review{display:none}
  .receipt-view{width:calc(100vw - 20px)}.slot{padding:12px}.shotcard{padding:10px}.claim-total{font-size:28px}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* Korean type: readable labels and consistent real weights, including dialogs. */
+body{font-size:16px;line-height:1.65;letter-spacing:-.015em;font-synthesis:none;word-break:keep-all;overflow-wrap:anywhere}
+h1{letter-spacing:-.025em}h2{font-size:20px;font-weight:600;letter-spacing:-.02em}
+label,.fh>label{font-size:14px;font-weight:500;line-height:1.5}
+input,select{font-size:16px;font-weight:400;letter-spacing:0}input::placeholder{font-size:14px}
+button,.route-action,.route-action.p,.route-action.p2{font-size:15px;font-weight:500;letter-spacing:-.01em;line-height:1.4}
+.note,.lookup-status{font-size:14px;line-height:1.7}.mini,.cancel-action{font-size:14px}
+.steps a{font-size:14px}.quiet-details>summary{font-size:14px}
+.ck,.cue.on{font-size:14px}.trip-direction .note{font-size:13px}
+.pin{font-size:12px!important}.address-step .quiet-details{margin-top:12px;border-top:0}
+.address-step .quiet-details>summary{padding:4px 0 8px}.address-step .quiet-details>.body{padding-bottom:2px}
+#nextcue{color:#52665b;line-height:1.6}.addrbox{margin-top:8px}.cand .sub{font-size:13px;line-height:1.6}
+.arow{font-size:14px}.expense-card button{font-size:14px}.slot h3,.shotcard>.ch{font-size:14px}
+.slot h3 span{font-size:13px}.drop{font-size:14px}.mo header h3{font-size:20px;font-weight:600}
+.mo .ovstep{font-size:16px;font-weight:600;line-height:1.65}.mo .ovstep em{font-size:14px;font-weight:400}
+.mo .adr,.mo .adr .nm{font-size:15px}.mo footer button,.mo footer .file-pick{font-size:15px}
+.summary-card h2{font-size:16px}.claim-breakdown{font-size:14px}.proof-check{font-size:13px}
+.report-preview{margin-top:16px}.report-preview .report-sheet:last-child{margin-bottom:0}
+pre.f{font-family:var(--font);font-size:14px;line-height:1.9;white-space:pre-wrap;font-variant-numeric:tabular-nums}
+@media(max-width:600px){
+ h2{font-size:18px}.note,.lookup-status{font-size:13px}
+ .route-action,.route-action.p,.route-action.p2{font-size:14px}.expense-card button{font-size:14px}
+ .mo footer button,.mo footer .file-pick{font-size:14px}.steps{gap:12px}.steps a{font-size:13px}
+ .address-step .row{align-items:flex-start}.cue.on{font-size:13px;flex-basis:100%}
+}

@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>현재 화면 캡처</title>
+<link rel="stylesheet" href="fonts.css">
 <!--
   증빙 화면(네이버 지도·하이패스·오피넷 등)은 다른 회사 사이트라
   그 화면 안에 버튼을 넣을 수가 없습니다. 그래서 캡처 버튼만 담은
@@ -17,12 +18,12 @@
 <style>
 :root{--g:#137a54;--g-d:#0e6144;--ink:#17201d;--ink-2:#4a5854;--mu:#7c8b86;--ln:#dfe6e3}
 *{box-sizing:border-box}
-body{margin:0;padding:18px;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Malgun Gothic","맑은 고딕",sans-serif;
+body{margin:0;padding:18px;font:15px/1.65 "Jacha Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   color:var(--ink);background:#f7f9f8}
-h1{font-size:15px;margin:0 0 5px}
-p{margin:0 0 13px;font-size:12.5px;color:var(--ink-2)}
+h1{font-size:18px;margin:0 0 8px;font-weight:600}
+p{margin:0 0 13px;font-size:14px;color:var(--ink-2)}
 .tgt{font-weight:600;color:var(--g-d)}
-button{width:100%;padding:14px 16px;font-size:15px;font-weight:600;color:#fff;background:var(--g);
+button{width:100%;padding:14px 16px;font-family:inherit;font-size:15px;font-weight:600;color:#fff;background:var(--g);
   border:none;border-radius:9px;cursor:pointer}
 button:hover{background:var(--g-d)}
 button:disabled{background:var(--mu);cursor:default}
@@ -34,7 +35,7 @@ button.sub.done:hover{background:#000}
 #msg{margin:13px 0 0;font-size:12.5px;color:var(--ink-2);min-height:36px}
 #msg.warn{color:#c0392b}
 #msg.ok{color:var(--g-d);font-weight:600}
-.hint{margin:14px 0 0;font-size:11.5px;color:var(--mu);line-height:1.5}
+.hint{margin:14px 0 0;font-size:13px;color:var(--ink-2);line-height:1.65}
 </style>
 </head>
 <body>
