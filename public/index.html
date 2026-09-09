@@ -1124,14 +1124,17 @@ function hidpi(cv,w,h){
 function reportModel(){
   var s=calc(),date=(OIL_OK&&OIL_OK.date)||$("date").value;
   var route=주소항목().map(function(r){return [r.tag,r.raw];});
-  var costs=[["자차보조금",s.km.toFixed(1)+" km · "+KO(Math.round(s.pr))+" 원/L",s.err?"—":WON(s.sub)]];
+  var km={text:s.km.toFixed(1)+" km",key:"map"},price={text:KO(Math.round(s.pr))+" 원/L",key:"oil"};
+  var distance=RT_INFO?["왕복 · 편도 ",{text:RT_INFO.편도.toFixed(1)+" km",key:"map"}," × 2 · "]:[];
+  distance.push("총 ",km);
+  var costs=[{label:"자차보조금",basis:[km," · ",price],amount:s.err?"—":WON(s.sub)}];
   var tail=s.inc?"실비":"별도 청구 · 합계 제외";
-  if(s.toll)costs.push(["통행료",tail,WON(s.toll)]);
-  if(s.park)costs.push(["주차료",tail,WON(s.park)]);
+  costs.push({label:"통행료",basis:[{text:장수("toll")?"증빙 첨부":"증빙 미첨부",key:"toll"},s.inc?"":" · 별도 청구 · 합계 제외"],amount:WON(s.toll)});
+  if(s.park)costs.push({label:"주차료",basis:[tail],amount:WON(s.park)});
   return {scale:FSCALE,date:$("date").value,name:$("name").value.trim(),dept:$("dept").value,purpose:$("purp").value,
     vehicle:"자가용 승용 · "+$("oil").value+" · 연비 "+s.fe+" km/L",route:route,
-    distance:(RT_INFO?"왕복 · 편도 "+RT_INFO.편도.toFixed(1)+" km × 2 · ":"")+"총 "+s.km.toFixed(1)+" km",
-    formula:"적용 유가 "+KO(Math.round(s.pr))+" 원/L"+(date?" ("+date+" 기준)":"")+" · 가산율 "+s.rt,
+    distance:distance,
+    formula:["적용 유가 ",price,(date?" ("+date+" 기준)":"")+" · 가산율 "+s.rt],
     costs:costs,totalLabel:s.inc?"청구 합계":"자차보조금",total:s.err?"—":WON(s.total),
     sources:[SRC.route,SRC.toll,SRC.park,SRC.oil,
       "공식: 주행거리 ÷ "+s.fe+" km/L × 전국평균유가 × "+s.rt+" (사내 여비규정)",
@@ -1146,7 +1149,7 @@ function reportEvidence(){
       copy.getContext('2d').drawImage(pg.im,0,0);src=copy.toDataURL('image/png');REPORT_IMAGES.set(pg.im,src);
     }
     if(!src&&pg.im.toDataURL){src=pg.im.toDataURL("image/png");REPORT_IMAGES.set(pg.im,src);}
-    return {label:pg.label,width:pg.im.width,height:pg.im.height,
+    return {key:pg.key,label:pg.label,width:pg.im.width,height:pg.im.height,
       src:src,
       hl:pg.hl,scale:ISCALE*(pg.zoom==null?1:pg.zoom)};
   });
@@ -1184,13 +1187,13 @@ function drawPage1(cv){
     heading("출장 정보");
     [["출장자",m.name],["부서",m.dept],["출장목적",m.purpose],["차량·유종",m.vehicle]].forEach(function(r){row(r[0],r[1]);});
     heading("이동 경로");(m.route.length?m.route:[["경로","미입력"]]).forEach(function(r){row(r[0],r[1]);});
-    T(m.distance,M,y,PT.body,500);y+=pt(12);
+    T(window.JachaReport.text(m.distance),M,y,PT.body,500);y+=pt(12);
     heading("산출 내역");
-    lines(m.formula,W,PT.label).forEach(function(l){T(l,M,y,PT.label,400,"#52605a");y+=pt(17);});
+    lines(window.JachaReport.text(m.formula),W,PT.label).forEach(function(l){T(l,M,y,PT.label,400,"#52605a");y+=pt(17);});
     y+=pt(5);rule(y);y+=pt(18);
     m.costs.forEach(function(r){
-      T(r[0],M,y,PT.body);T(r[2],PAGE_W-M,y,PT.body,500,null,"right");
-      var ls=lines(r[1],W*.42,PT.label);ls.forEach(function(l,i){T(l,M+W*.25,y+i*pt(17),PT.label,400,"#52605a");});
+      T(r.label,M,y,PT.body);T(r.amount,PAGE_W-M,y,PT.body,500,null,"right");
+      var ls=lines(window.JachaReport.text(r.basis),W*.42,PT.label);ls.forEach(function(l,i){T(l,M+W*.25,y+i*pt(17),PT.label,400,"#52605a");});
       y+=Math.max(1,ls.length)*pt(17)+pt(8);rule(y);y+=pt(18);
     });
     y+=pt(10);rule(y,"#263e32");y+=pt(34);

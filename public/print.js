@@ -2,6 +2,12 @@
 (async function(){
   'use strict';
   var status=document.getElementById('printStatus'),button=document.getElementById('printAgain');
+  // document.write into about:blank inherits the opener's base URL. Pin each
+  // fragment to this print document so PDF links cannot point back to the app.
+  var ownURL=document.URL.split('#')[0];
+  document.querySelectorAll('a[href^="#"]').forEach(function(link){
+    link.setAttribute('href',ownURL+link.getAttribute('href'));
+  });
   var pending=false;
   async function prepare(){
     if(pending)return;
