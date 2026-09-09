@@ -22,6 +22,15 @@ export function verifiedPrice(snapshot,q){
   return price;
 }
 
+// Opinet draws its "처리 중" message inside a GIF, so text/DOM readiness alone
+// cannot prove the result is ready. Never hide the site's overlay to get a PNG.
+export function opinetIdle(){
+  return [...document.querySelectorAll('#mask,#modalwindow')].every(el=>{
+    const style=getComputedStyle(el),rect=el.getBoundingClientRect();
+    return style.display==='none'||style.visibility==='hidden'||style.opacity==='0'||rect.width<=0||rect.height<=0;
+  });
+}
+
 export async function renderOpinet(binding,q,launch){
   if(!launch)launch=(await import('@cloudflare/puppeteer')).default.launch;
   const browser=await launch(binding);
@@ -37,6 +46,7 @@ export async function renderOpinet(binding,q,launch){
     });
     if(response&&!response.ok())throw new Error('capture_page_unavailable');
     await page.waitForSelector('#STA_Y');
+    await page.waitForFunction(opinetIdle);
     stage='conditions';
     // Fire the site's period handler before setting dates, since it resets them.
     await page.evaluate(({date,fuel})=>{
@@ -59,11 +69,15 @@ export async function renderOpinet(binding,q,launch){
     stage='verify';
     await page.waitForFunction(date=>{
       const selected=['STA_Y','STA_M','STA_D'].map(id=>document.getElementById(id)?.value).join('');
-      return document.readyState==='complete'&&selected===date&&[...document.querySelectorAll('table.tbl_type10 tbody tr')].some(row=>{
+      const end=['END_Y','END_M','END_D'].map(id=>document.getElementById(id)?.value).join('');
+      return document.readyState==='complete'&&selected===date&&end===date&&document.querySelector('input[name="TERM"]:checked')?.value==='D'&&[...document.querySelectorAll('table.tbl_type10 tbody tr')].some(row=>{
         const m=/^(\d{2}|\d{4})년(\d{1,2})월(\d{1,2})일$/.exec((row.querySelector('th,td')?.innerText||'').replace(/\s/g,''));
         return m&&(m[1].length===2?'20'+m[1]:m[1])+m[2].padStart(2,'0')+m[3].padStart(2,'0')===date;
       });
     },{},q.date);
+    stage='loading_overlay';
+    await page.waitForFunction(opinetIdle);
+    stage='verify';
     const snapshot=await page.evaluate(()=>({
       start:['STA_Y','STA_M','STA_D'].map(id=>document.getElementById(id)?.value).join(''),
       end:['END_Y','END_M','END_D'].map(id=>document.getElementById(id)?.value).join(''),
@@ -90,7 +104,7 @@ export async function captureResponse(request,env,ctx,render=renderOpinet){
   const fail=(error,status)=>Response.json({error},{status,headers:{'cache-control':'no-store'}});
   if(!q)return fail('invalid_capture_conditions',400);
   if(!env.BROWSER)return fail('capture_unavailable',503);
-  const key=new Request(new URL('/opinet/screenshot?date='+q.date+'&prodcd='+q.fuel+'&v=1',request.url));
+  const key=new Request(new URL('/opinet/screenshot?date='+q.date+'&prodcd='+q.fuel+'&v=2',request.url));
   const cached=await caches.default.match(key);if(cached)return cached;
   try{
     const {png,price}=await render(env.BROWSER,q);

@@ -1,8 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {captureQuery,verifiedPrice,renderOpinet,captureResponse} from '../opinet-capture.js';
+import vm from 'node:vm';
+import {captureQuery,verifiedPrice,opinetIdle,renderOpinet,captureResponse} from '../opinet-capture.js';
 const query=(date='20260906',fuel='B027')=>captureQuery(new URL(`https://example.com/opinet/screenshot?date=${date}&prodcd=${fuel}`));
 const snapshot={start:'20260906',end:'20260906',term:'D',headers:['구분','보통휘발유','자동차용경유'],rows:[['2026년09월05일','1,800.00','1,750.00'],['2026년09월06일','1,859.33','1,843.73']]};
+test('Opinet loading GIF and dimming mask must both be gone even when the price table exists',()=>{
+  const hidden={style:{display:'none',visibility:'visible',opacity:'1'},getBoundingClientRect:()=>({width:0,height:0})};
+  const visible={style:{display:'block',visibility:'visible',opacity:'1'},getBoundingClientRect:()=>({width:1280,height:1000})};
+  const ready=elements=>vm.runInNewContext('('+opinetIdle.toString()+')()',{document:{querySelectorAll:()=>elements},getComputedStyle:e=>e.style});
+  assert.equal(ready([]),true);assert.equal(ready([hidden,hidden]),true);
+  assert.equal(ready([visible,hidden]),false);assert.equal(ready([hidden,visible]),false);
+  assert.equal(ready([{...visible,style:{...visible.style,visibility:'hidden'}}]),true);
+  assert.equal(ready([{...visible,getBoundingClientRect:()=>({width:0,height:0})}]),true);
+});
+test('a stuck post-query loading overlay prevents capture and still closes the browser',async()=>{
+  let waits=0,closed=0,captured=0;
+  const page={setDefaultTimeout(){},setDefaultNavigationTimeout(){},async setViewport(){},async goto(){return {ok:()=>true};},async waitForSelector(){},
+    async waitForFunction(){if(++waits===3)throw Error('overlay timeout');},async evaluate(){},async click(){},async waitForNavigation(){},url:()=>query().url,
+    async screenshot(){captured++;}};
+  await assert.rejects(renderOpinet({},query(),async()=>({newPage:async()=>page,close:async()=>{closed++;}})),/loading_overlay/);
+  assert.equal(closed,1);assert.equal(captured,0);
+});
 test('capture only accepts a real historical date and supported fuel',()=>{
   assert.equal(query().iso,'2026-09-06');
   for(const [date,fuel] of [['20260230','B027'],['20990101','B027'],['20260906','https://evil.test'],['2026090','B027']])assert.equal(query(date,fuel),null);
@@ -12,7 +30,7 @@ test('capture verifies selected day and correct product column including LPG sho
   assert.equal(verifiedPrice(snapshot,query()),1859.33);
   assert.equal(verifiedPrice(snapshot,query('20260906','D047')),1843.73);
   assert.equal(verifiedPrice({...snapshot,headers:['기간','자동차부탄 (원/ℓ)'],rows:[['26년09월06일','1,098.57']]},query('20260906','K015')),1098.57);
-  for(const changes of [{start:'20260905'},{term:'W'},{headers:['구분','고급휘발유']},{rows:[]},{rows:[['2026년09월06일','0']]}])assert.throws(()=>verifiedPrice({...snapshot,...changes},query()));
+  for(const changes of [{start:'20260905'},{end:'1997'},{term:'W'},{headers:['구분','고급휘발유']},{rows:[]},{rows:[['2026년09월06일','0']]}])assert.throws(()=>verifiedPrice({...snapshot,...changes},query()));
 });
 test('browser always closes after screenshot or a verification failure',async()=>{
   for(const fail of [false,true]){
@@ -30,6 +48,7 @@ test('cache reuses verified PNGs and never caches capture failure',async()=>{
   const req=new Request('https://example.com/opinet/screenshot?date=20260906&prodcd=B027');
   const ctx={waitUntil:p=>pending.push(p)};
   const render=async()=>{calls++;return {png:new Uint8Array([137,80,78,71]),price:1859.33};};
+  entries.set(req.url+'&v=1',new Response('old capture with a loading overlay'));
   const first=await captureResponse(req,{BROWSER:{}},ctx,render);await Promise.all(pending);
   assert.equal(first.headers.get('content-type'),'image/png');assert.equal(first.headers.get('x-oil-date'),'2026-09-06');
   assert.equal(first.headers.get('x-oil-price'),'1859.33');

@@ -2788,7 +2788,7 @@ function 유가증빙그리기(r){
 async function 유가웹캡처(r,controller){
   var ac=controller||new AbortController(),timer=setTimeout(function(){ac.abort();},55000);
   try{
-    var url="/opinet/screenshot?date="+r.날짜.replace(/-/g,"")+"&prodcd="+FUEL[r.유종][1];
+    var url="/opinet/screenshot?date="+r.날짜.replace(/-/g,"")+"&prodcd="+FUEL[r.유종][1]+"&v=2";
     var response=await fetch(url,{signal:ac.signal});
     if(!response.ok)throw new Error("오피넷 웹화면 캡처에 실패했습니다");
     if(response.headers.get("content-type")!=="image/png"||response.headers.get("x-oil-date")!==r.날짜||Math.abs(Number(response.headers.get("x-oil-price"))-r.원값)>0.005)
