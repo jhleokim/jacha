@@ -12,6 +12,8 @@
 .report-facts dt{color:#59645f;font-size:calc(10pt * var(--report-scale));font-weight:400}.report-facts dd{margin:0;min-width:0}
 .report-distance{margin:12px 0 0;padding-top:10px;border-top:1px solid #e4e8e6;font-weight:500}
 .report-formula{font-size:calc(10pt * var(--report-scale));color:#52605a;margin:0 0 12px;line-height:1.7}
+.report-link{color:#17604f;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.report-link:focus-visible{outline:2px solid #17604f;outline-offset:3px}
 .report-costs{width:100%;border-collapse:collapse;table-layout:fixed;font-size:inherit}
 .report-costs th,.report-costs td{padding:8px 0;text-align:left;border-bottom:1px solid #e0e6e2;vertical-align:top;line-height:1.65;font-weight:400}
 .report-costs thead th{padding:7px 0;font-size:calc(9pt * var(--report-scale));font-weight:500;color:#58635d;border-top:1px solid #b9c8bf}
@@ -24,6 +26,7 @@
 .report-sources h2{font-size:calc(10pt * var(--report-scale));margin-bottom:8px}.report-sources p{margin:2px 0}
 .report-evidence-heading{display:flex;align-items:baseline;justify-content:space-between;gap:16px;border-bottom:1px solid #b9c8bf;margin-bottom:18px;padding-bottom:12px}
 .report-evidence-heading h2{margin:0}.report-evidence-heading p{font-size:calc(9pt * var(--report-scale));color:#52605a;margin:0;white-space:nowrap}
+.report-evidence-nav{text-align:right}.report-backlink{display:inline-block;font-size:calc(9pt * var(--report-scale));margin-bottom:3px;white-space:nowrap}
 .report-evidence figure{margin:0 auto;max-width:100%}.report-evidence svg{display:block;width:100%;height:auto;max-height:240mm}
 .print-window{margin:0;background:#edf0ee}.print-window .report-document{max-width:210mm;margin:24px auto}
 .print-window .report-sheet{padding:14mm 10mm}.print-toolbar{padding:14px 24px;background:#fff;border-bottom:1px solid #d4ded7;font:15px/1.6 "Jacha Pretendard",sans-serif;display:flex;justify-content:space-between;gap:14px;align-items:center}
@@ -41,6 +44,8 @@
 @page{size:A4;margin:14mm 15mm}
 @media print{
  html,body.print-window{background:#fff;margin:0;padding:0}
+ /* Pretendard's tabular alternates can export as private-use characters in Chromium PDFs. */
+ .report-document,.report-costs .amount{font-variant-numeric:normal}
  .print-toolbar{display:none}
  .print-window .report-document{max-width:none;margin:0}
  .print-window .report-sheet{padding:0;margin:0;border:0;border-radius:0}

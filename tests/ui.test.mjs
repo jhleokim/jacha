@@ -357,6 +357,42 @@ test('native report preserves escaped text, exact totals, provenance, selected p
   assert.match(printed,/<title>자차보조금정산_/);assert.match(printed,/report-costs/);assert.match(printed,/\/fonts.css/);assert.match(printed,/\/print.js/);assert.doesNotMatch(printed,/<canvas/);
   assert.match(printed,/13,740 원/);assert.equal((printed.match(/class="report-sheet report-evidence"/g)||[]).length,1);
 });
+test('report numbers and toll status link to the first matching evidence, with return links',()=>{
+  const a=app();valid(a);a.e.get('toll').value='9600';a.e.get('park').value='3000';
+  const photo=()=>({use:{width:800,height:600,src:'data:image/png;base64,TEST'},hl:[]});
+  a.c.SHOT.map=[photo(),photo()];a.c.SHOT.oil=[photo()];a.c.SHOT.toll=[{use:null},photo(),photo()];a.c.SHOT.park=[photo()];
+  a.c.RT_INFO={편도:11.5};a.c.draw();const out=a.e.get('reportPreview').innerHTML;
+  assert.match(out,/href="#report-evidence-1"[^>]*>23\.0 km<\/a>/);
+  assert.match(out,/href="#report-evidence-1"[^>]*>11\.5 km<\/a>/);
+  assert.match(out,/href="#report-evidence-3"[^>]*>1,500 원\/L<\/a>/);
+  assert.match(out,/<th scope="row">통행료<\/th><td><a[^>]*href="#report-evidence-4"[^>]*>증빙 첨부<\/a>/);
+  assert.match(out,/16,740 원/);assert.doesNotMatch(out,/\[object Object\]/);
+  assert.equal((out.match(/href="#report-summary"/g)||[]).length,6);
+  const ids=new Set([...out.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]));
+  for(const m of out.matchAll(/\bhref="#([^"]+)"/g))assert.ok(ids.has(m[1]),'missing destination: '+m[1]);
+  assert.deepEqual(Array.from(a.c.reportEvidence(),pg=>pg.key),['map','map','oil','toll','toll','park']);
+  assert.ok(a.e.get('pv').texts.some(t=>t.text==='증빙 첨부'));
+});
+test('missing or removed evidence is plain text and never leaves a dangling PDF link',()=>{
+  const a=app();valid(a);a.c.draw();let out=a.e.get('reportPreview').innerHTML;
+  assert.match(out,/<th scope="row">통행료<\/th><td>증빙 미첨부<\/td><td class="amount">0 원<\/td>/);
+  assert.doesNotMatch(out,/href="#report-evidence-/);
+  a.c.SHOT.toll=[{use:{width:800,height:600,src:'data:image/png;base64,TEST'},hl:[]}];a.e.get('toll').value='9600';a.e.get('inc').checked=false;a.c.draw();
+  out=a.e.get('reportPreview').innerHTML;assert.match(out,/href="#report-evidence-1"[^>]*>증빙 첨부<\/a> · 별도 청구 · 합계 제외/);assert.match(out,/4,140 원/);
+  a.c.SHOT.toll=[];a.c.draw();out=a.e.get('reportPreview').innerHTML;
+  assert.match(out,/증빙 미첨부 · 별도 청구 · 합계 제외/);assert.doesNotMatch(out,/href="#report-evidence-/);
+  assert.ok(a.e.get('pv').texts.some(t=>t.text.includes('증빙 미첨부')));
+});
+test('print document uses internal destinations for long summaries and escapes linked labels',()=>{
+  const a=app();valid(a);a.e.get('purp').value='현장 설계 변경 검토 '.repeat(100);
+  a.c.SHOT.oil=[{use:{width:800,height:600,src:'data:image/png;base64,TEST'},hl:[]}];
+  const model=a.c.reportModel();model.evidence=a.c.reportEvidence();model.evidence[0].label='유가 <증빙> "확인"';
+  const printed=a.c.window.JachaReport.printDocument(model,'https://example.com');
+  assert.match(printed,/href="#report-evidence-1" title="유가 &lt;증빙&gt; &quot;확인&quot;로 이동"/);
+  assert.doesNotMatch(printed,/<a[^>]*href="https?:|#page=/);
+  assert.match(printed,/id="report-summary"/);assert.match(printed,/id="report-evidence-1"/);
+  assert.match(printed,/증빙 미첨부/);assert.doesNotMatch(printed,/\[object Object\]/);
+});
 test('PNG layout wraps long Korean purpose and addresses without clipping its footer',()=>{
   const a=app();valid(a);const purpose='협력사와 공동 현장 점검 및 설계 변경 사항 검토 '.repeat(8);a.e.get('purp').value=purpose;a.e.get('to').value='서울특별시 중구 세종대로 서울시청 별관 지하주차장 방문객 출입구 '.repeat(6);
   a.c.FSCALE=1.3;a.c.draw();const cv=a.e.get('pv');assert.ok(cv.texts.every(t=>t.y<cv._h-16));
