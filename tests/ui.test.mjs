@@ -19,7 +19,7 @@ function app(saved=new Map(),config){
     appendChild(el){this.children.push(el);if(el.id)elements.set(el.id,el);return el;}
     querySelectorAll(selector){return selector==='canvas'?this.children.filter(e=>e.tagName==='canvas'):[];}
     querySelector(){return this.input;}
-    setAttribute(){} focus(){} scrollIntoView(){} showModal(){this.open=true;} close(){this.open=false;}
+    setAttribute(k,v){(this.attributes??={})[k]=v;} focus(){doc.activeElement=this;} scrollIntoView(){} showModal(){this.open=true;} close(){this.open=false;}
     getContext(){const owner=this;return {
       fillText(text,x,y){owner.texts.push({text:String(text),x,y,font:this.font});},
       fillRect(){},strokeRect(){},setTransform(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},drawImage(){}
@@ -28,11 +28,12 @@ function app(saved=new Map(),config){
   for(const match of html.matchAll(/<(input|select|[a-z0-9]+)\b([^>]*\bid="([^"]+)"[^>]*)>/g)){
     const e=new Element(match[1],match[3]);e.value=/\bvalue="([^"]*)"/.exec(match[2])?.[1]||'';
     e.type=/\btype="([^"]*)"/.exec(match[2])?.[1]||'';e.checked=/\bchecked\b/.test(match[2]);elements.set(e.id,e);
+    e.className=/\bclass="([^"]*)"/.exec(match[2])?.[1]||'';
   }
   for(const k of ['name','dept','date','from','purp']){const p=new Element();p.input=new Element('input');pins.set(k,p);}
   elements.get('oil').value='휘발유';elements.get('rnd').value='floor';
   const doc=new Element();doc.getElementById=id=>elements.get(id);
-  doc.createElement=tag=>new Element(tag);doc.createTextNode=t=>({textContent:t});
+  doc.body=new Element('body');doc.createElement=tag=>new Element(tag);doc.createTextNode=t=>({textContent:t});
   doc.querySelector=sel=>pins.get(/data-pin="([^"]+)"/.exec(sel)?.[1]);
   doc.querySelectorAll=sel=>sel==='input,select'?[...elements.values()].filter(e=>['input','select'].includes(e.tagName)):[];
   const win=new Element();win.devicePixelRatio=2;win.open=()=>null;win.getComputedStyle=()=>({lineHeight:'25px',paddingTop:'15px'});
@@ -48,6 +49,69 @@ function app(saved=new Map(),config){
   return {c:context,e:elements,pins,saved,timers,frames};
 }
 function valid(a){for(const [k,v] of Object.entries({km:'23',price:'1500',fe:'10',rate:'1.2',toll:'0',park:'0'}))a.e.get(k).value=v;}
+
+test('claim summary distinguishes missing inputs, paid expenses and actual evidence',()=>{
+  const a=app();assert.equal(a.e.get('claimTotal').textContent,'—');assert.equal(a.e.get('err').textContent,'');
+  valid(a);a.e.get('toll').value='9600';a.e.get('park').value='3000';a.c.draw();
+  assert.equal(a.e.get('claimTotal').textContent,'16,740 원');assert.equal(a.e.get('mobileTotal').textContent,'16,740 원');
+  assert.equal(a.e.get('checkTollState').textContent,'미첨부');assert.match(a.e.get('reviewHint').textContent,/통행료/);
+  a.c.SHOT.map=[{use:{},full:{}}];a.c.SHOT.oil=[{use:{},full:{},autoOil:true,webOil:false}];a.c.draw();
+  assert.equal(a.e.get('claimCount').textContent,'2장');assert.equal(a.e.get('checkOilState').textContent,'조회값 자료');
+  a.e.get('inc').checked=false;a.c.draw();assert.equal(a.e.get('claimTotal').textContent,'4,140 원');assert.equal(a.e.get('claimToll').textContent,'별도 청구');
+});
+test('invalid export focuses the field including collapsed settlement criteria',()=>{
+  const a=app();let opened=0;a.c.window.open=()=>{opened++;};
+  a.e.get('prt').click();assert.equal(opened,0);assert.equal(a.c.document.activeElement.id,'km');assert.equal(a.e.get('km').attributes['aria-invalid'],'true');
+  valid(a);a.e.get('fe').value='0';a.e.get('png').click();
+  assert.equal(a.e.get('dtStd').open,true);assert.equal(a.c.document.activeElement.id,'fe');assert.equal(opened,0);
+  a.e.get('fe').value='10';a.e.get('fe').emit('input');a.c.draw();assert.equal(a.e.get('exportError').textContent,'');assert.equal(a.e.get('fe').attributes['aria-invalid'],'false');
+});
+test('route cancel and immediate retry isolate old completion and fallback',async()=>{
+  for(const rejects of [false,true]){
+    const a=app();valid(a);a.e.get('to').value='도착';a.c.확정좌표=()=>[{x:127,y:37},{x:128,y:38}];
+    const jobs=[];let fallbacks=0;a.c.경로웹캡처=(_cs,_names,controller)=>new Promise((resolve,reject)=>jobs.push({resolve,reject,controller}));a.c.자동거리=async()=>{fallbacks++;return 99;};
+    const first=a.c.경로자동조회();a.e.get('routecancel').click();assert.equal(jobs[0].controller.signal.aborted,true);assert.equal(a.e.get('autoroute').disabled,false);
+    const second=a.c.경로자동조회();rejects?jobs[0].reject(Error('cancelled')):jobs[0].resolve({km:99,image:{}});await first;
+    assert.equal(a.e.get('autoroute').disabled,true);assert.equal(a.e.get('routecancel').hidden,false);assert.equal(a.c.SHOT.map.length,0);assert.equal(fallbacks,0);
+    jobs[1].resolve({km:12,image:{}});await second;
+    assert.equal(a.e.get('km').value,'12');assert.equal(a.c.SHOT.map.length,1);assert.equal(a.e.get('autoroute').disabled,false);assert.equal(a.e.get('routecancel').hidden,true);
+    assert.notEqual(a.e.get('dtShot').open,true);
+  }
+});
+test('cancelled address lookup cannot overwrite immediately retried candidates',async()=>{
+  const a=app();a.e.get('to').value='도착';const jobs=[];
+  a.c.searchPlaces=()=>new Promise(resolve=>jobs.push(resolve));a.c.경로웹캡처=async()=>({km:12,image:{}});
+  const first=a.c.경로자동조회();a.e.get('routecancel').click();const second=a.c.경로자동조회();
+  jobs[0]([{nm:'옛 출발',x:1,y:1}]);jobs[1]([{nm:'옛 도착',x:2,y:2}]);await first;
+  assert.equal(a.c.ADDR.length,0);assert.equal(a.e.get('chkaddr').disabled,true);
+  jobs[2]([{nm:'새 출발',x:127,y:37}]);jobs[3]([{nm:'새 도착',x:128,y:38}]);await second;
+  assert.equal(a.c.ADDR[0].pick.nm,'새 출발');assert.equal(a.e.get('km').value,'12');
+});
+test('oil cancel and retry ignore older screenshot errors and preserve the new busy state',async()=>{
+  const a=app();valid(a);a.e.get('date').value='2026-09-07';
+  a.c.lookupOil가까운=async()=>({price:1652,date:'2026-09-06'});
+  const jobs=[];let fallbacks=0;a.c.유가웹캡처=(_r,controller)=>new Promise((resolve,reject)=>jobs.push({resolve,reject,controller}));
+  a.c.유가증빙그리기=()=>{fallbacks++;return {};};
+  const first=a.c.유가증빙자동첨부();await new Promise(setImmediate);
+  a.e.get('oilcancel').click();assert.equal(jobs[0].controller.signal.aborted,true);assert.equal(a.e.get('price').value,'1652');
+  const second=a.c.유가증빙자동첨부();await new Promise(setImmediate);
+  jobs[0].reject(Error('cancel'));await first;assert.equal(a.e.get('oilshot').disabled,true);assert.equal(fallbacks,0);
+  jobs[1].resolve({});await second;assert.equal(a.c.SHOT.oil.length,1);assert.equal(a.c.SHOT.oil[0].webOil,true);assert.equal(a.e.get('oilcancel').hidden,true);assert.notEqual(a.e.get('dtShot').open,true);
+});
+test('modal uses native dialog lifecycle and receipt capture starts collapsed',()=>{
+  const a=app();a.c.ovOpen('toll');assert.equal(a.e.get('ov').open,true);assert.equal(a.e.get('captureDetails').open,false);
+  a.e.get('ov').emit('cancel');assert.equal(a.e.get('ov').open,false);assert.equal(a.e.get('ov').className,'ov');
+});
+test('already imported photos can be confirmed before OCR finishes',()=>{
+  const a=app();valid(a);a.c.ovOpen('toll');a.c.SHOT.toll=[{use:{},full:{}}];
+  a.e.get('ovtollamt').value='';a.e.get('ovuse').click();assert.equal(a.e.get('ov').open,false);assert.equal(a.c.SHOT.toll.length,1);
+});
+test('late oil modal response cannot change a newly opened receipt modal',async()=>{
+  const a=app();let resolve;a.c.유가자동조회=()=>new Promise(r=>resolve=r);
+  a.c.ovOpen('oil');a.c.ovClose();a.c.ovOpen('toll');const before=a.e.get('ovs1sub').textContent;
+  resolve({유종:'휘발유',값:1652,날짜:'2026-09-06'});await new Promise(setImmediate);
+  assert.equal(a.e.get('ovs1sub').textContent,before);assert.equal(a.c.OVMODE,'toll');
+});
 
 test('native modal file input resets immediately, preserves target and reports duplicate photos',async()=>{
   const a=app();valid(a);a.c.ReceiptReader.recognize=async()=>({amount:2800,reason:'test'});
@@ -227,7 +291,7 @@ test('transport failures do not retry seven different dates',async()=>{
   await assert.rejects(a.c.lookupOil가까운('2026-09-07','휘발유'),/503/);assert.equal(calls,1);
 });
 test('route keeps automatic and manual actions separate after address confirmation',()=>{
-  const a=app();assert.equal(a.e.get('chkaddr').className,'p route-action');
+  const a=app();assert.equal(a.e.get('chkaddr').className,'route-action');
   assert.equal(a.e.get('omap').className,'p2 route-action');
   a.c.확정좌표=()=>[{x:127,y:37}];a.c.경로단계갱신(true);
   assert.equal(a.e.get('omap').className,'p2 route-action');assert.equal(a.e.get('chkaddr').className,'done route-action');
