@@ -295,7 +295,7 @@ button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 </div>
 </div>
 
-<nav class="steps" aria-label="정산 순서"><a href="#trip"><span>1</span>출장 정보</a><a href="#route"><span>2</span>경로</a><a href="#costs"><span>3</span>비용·증빙</a><a href="#review"><span>4</span>검토·저장</a></nav>
+<nav class="steps" aria-label="정산 순서"><a href="#trip"><span>1</span>출장 정보</a><a href="#route"><span>2</span>경로</a><a href="#costs"><span>3</span>비용·증빙</a><a href="#review" id="navreview"><span>4</span>검토·저장</a></nav>
 <div class="workbench"><main>
 <section id="trip">
 <h2><span class="step-no">01</span>출장 정보</h2>
@@ -562,12 +562,22 @@ button:focus-visible{outline:3px solid #147dba;outline-offset:3px}
 <button id="checkOil" class="evidence-check"><span>유가</span><span id="checkOilState">미첨부</span></button>
 <button id="checkToll" class="evidence-check"><span>통행료</span><span id="checkTollState">지출 없음</span></button>
 <button id="checkPark" class="evidence-check"><span>주차료</span><span id="checkParkState">지출 없음</span></button>
-</div><a href="#review" class="review-link">검토·저장 <span aria-hidden="true">↗</span></a>
+</div><button type="button" id="reviewgo" class="review-link" aria-controls="review previewDetails">검토·저장 <span aria-hidden="true">↗</span></button>
 <p class="note storage-note">입력값은 이 브라우저에 12시간 보관됩니다. 증빙 사진은 새로고침하면 사라지므로 저장해 주세요.</p>
 </div></aside>
 </div>
-<div class="mobile-review"><div><span>청구 합계</span><b id="mobileTotal">—</b></div><a href="#review">검토하기</a></div>
+<div class="mobile-review"><div><span>청구 합계</span><b id="mobileTotal">—</b></div><button type="button" id="mobilereview" aria-controls="review previewDetails">검토하기</button></div>
 </div>
+
+<dialog id="tollReview" class="toll-review" aria-labelledby="tollReviewTitle" aria-describedby="tollReviewMessage tollReviewQuestion">
+<button type="button" id="tollReviewClose" class="toll-review-close" aria-label="통행료 안내 닫기">×</button>
+<p class="eyebrow">저장 전 확인</p>
+<h2 id="tollReviewTitle">통행료 증빙을 확인해 주세요</h2>
+<p id="tollReviewMessage">자차보조금 신청의 경우 통행료 증빙이 없을시 반려될 수 있습니다. 다시 한 번 확인해 주세요.</p>
+<p id="tollReviewQuestion">통행료가 없는 경로나, 국도를 이용하셨나요?</p>
+<p id="tollReviewAmount" class="note" hidden></p>
+<div class="toll-review-actions"><button type="button" id="tollRoad">국도 이용</button><button type="button" id="tollRecheck" class="p" autofocus>다시 확인하러 가기</button></div>
+</dialog>
 
 <script src="qr.js" onerror="void 0"></script>
 <script src="calculation.js"></script>
@@ -662,7 +672,46 @@ function showFx(s){
 }
 
 /* ---------- v6.0: summary, recovery and cancellable lookup jobs ---------- */
+var TOLL_REVIEW_ACK=null,TOLL_REVIEW_PENDING=null;
+function 통행료확인키(){
+  return JSON.stringify([$("name").value,$("date").value,경로키(),$("km").value,$("rt").checked,$("toll").value]);
+}
+function 통행료증빙확인(next){
+  if(장수("toll")||TOLL_REVIEW_ACK===통행료확인키())return true;
+  TOLL_REVIEW_PENDING=next;
+  $("tollReviewAmount").hidden=!(N("toll")>0);
+  $("tollReviewAmount").textContent=N("toll")>0?"입력된 통행료: "+WON(N("toll"))+" · 금액도 함께 확인해 주세요.":"";
+  if(!$("tollReview").open)$("tollReview").showModal();
+  document.body.classList.add("modal-open");
+  return false;
+}
+function 통행료알림닫기(){
+  TOLL_REVIEW_PENDING=null;
+  if($("tollReview").open)$("tollReview").close();
+  document.body.classList.remove("modal-open");
+}
+function 검토화면열기(){
+  $("previewDetails").open=true;draw();
+  $("review").scrollIntoView({block:"start",behavior:"auto"});
+  $("review").focus({preventScroll:true});
+}
+function 검토요청(){if(통행료증빙확인(검토화면열기))검토화면열기();}
+["reviewgo","mobilereview","navreview"].forEach(function(id){$(id).addEventListener("click",function(e){e.preventDefault();검토요청();});});
+$("tollRoad").addEventListener("click",function(){
+  var next=TOLL_REVIEW_PENDING;TOLL_REVIEW_ACK=통행료확인키();통행료알림닫기();
+  // Acknowledgement only: never erase a manually entered expense or invent proof.
+  if(next)next();
+});
+$("tollRecheck").addEventListener("click",function(){
+  통행료알림닫기();$("tollshot").scrollIntoView({block:"center"});$("tollshot").focus({preventScroll:true});ovOpen("toll");
+});
+$("tollReviewClose").addEventListener("click",통행료알림닫기);
+$("tollReview").addEventListener("cancel",function(e){e.preventDefault();통행료알림닫기();});
+["name","date","from","via","to","km","rt","toll"].forEach(function(id){
+  ["input","change"].forEach(function(event){$(id).addEventListener(event,function(){TOLL_REVIEW_ACK=null;});});
+});
 function 청구요약갱신(s){
+  if(장수("toll"))TOLL_REVIEW_ACK=null;
   var total=s.err?"—":WON(s.total);
   $("claimTotal").textContent=total;$("mobileTotal").textContent=total;
   $("claimSub").textContent=s.err?"—":WON(s.sub);
@@ -2860,9 +2909,10 @@ function 모든페이지(){
   return Array.prototype.slice.call($("pages").querySelectorAll("canvas"));
 }
 
-$("png").addEventListener("click",async function(){
+$("png").addEventListener("click",async function pngSave(){
   var st=calc();
   if(!저장입력확인(st))return;
+  if(!통행료증빙확인(pngSave))return;
   if(!await FONT_READY){$("exportError").textContent="글꼴을 불러오지 못했어요. 새로고침한 뒤 다시 저장해 주세요.";return;}
   if(!저장입력확인(calc()))return;
   draw();
@@ -2882,8 +2932,9 @@ $("png").addEventListener("click",async function(){
   $("pginfo").textContent=cs.length+"장을 내려받습니다. 브라우저가 여러 파일 저장을 물어보면 허용해 주세요.";
 });
 
-$("prt").addEventListener("click",function(){
+$("prt").addEventListener("click",function pdfSave(){
   if(!저장입력확인(calc()))return;
+  if(!통행료증빙확인(pdfSave))return;
   var w=window.open("","_blank");
   if(!w){$("exportError").textContent="저장 창이 차단됐어요. 브라우저에서 이 사이트의 팝업을 허용한 뒤 다시 눌러 주세요.";return;}
   try{
@@ -2894,6 +2945,7 @@ $("prt").addEventListener("click",function(){
 });
 
 $("smp").addEventListener("click",function(){
+  TOLL_REVIEW_ACK=null;통행료알림닫기();
   조회취소("oil",false);
   경로변경();$("rt").checked=false;
   유가증빙제거();
@@ -2910,6 +2962,7 @@ $("smp").addEventListener("click",function(){
   경로단계갱신(true);초안즉시저장(); draw();
 });
 $("clr").addEventListener("click",function(){
+  TOLL_REVIEW_ACK=null;통행료알림닫기();
   조회취소("route",false);조회취소("oil",false);ADDRESS_REQUEST++;$("chkaddr").disabled=false;$("addressDetails").open=false;$("exportError").textContent="";
   FILE_IMPORT_REVISION++;ReceiptEvidence.reset();
   ROUTE_REQUEST++;ROUTE_BASE=null;$("rt").checked=false;

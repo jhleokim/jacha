@@ -19,7 +19,7 @@ function app(saved=new Map(),config){
     appendChild(el){this.children.push(el);if(el.id)elements.set(el.id,el);return el;}
     querySelectorAll(selector){return selector==='canvas'?this.children.filter(e=>e.tagName==='canvas'):[];}
     querySelector(){return this.input;}
-    setAttribute(k,v){(this.attributes??={})[k]=v;} focus(){doc.activeElement=this;} scrollIntoView(){} showModal(){this.open=true;} close(){this.open=false;}
+    setAttribute(k,v){(this.attributes??={})[k]=v;} focus(){doc.activeElement=this;} scrollIntoView(options){this.lastScroll=options;} showModal(){this.open=true;} close(){this.open=false;}
     getContext(){const owner=this;return {
       measureText(text){return {width:Array.from(String(text)).reduce((n,c)=>n+(/[\u3000-\uffff]/.test(c)?1:.55),0)*(parseFloat(/([\d.]+)px/.exec(this.font||'16px')[1]))};},
       fillText(text,x,y){owner.texts.push({text:String(text),x,y,font:this.font});},
@@ -52,6 +52,39 @@ function app(saved=new Map(),config){
   return {c:context,e:elements,pins,saved,timers,frames};
 }
 function valid(a){for(const [k,v] of Object.entries({km:'23',price:'1500',fe:'10',rate:'1.2',toll:'0',park:'0'}))a.e.get(k).value=v;}
+
+test('all review entry points warn about missing toll proof even when the amount is zero',()=>{
+  for(const id of ['reviewgo','mobilereview','navreview'])for(const toll of ['0','9600']){
+    const a=app();valid(a);a.e.get('toll').value=toll;a.e.get(id).click();
+    assert.equal(a.e.get('tollReview').open,true);assert.notEqual(a.e.get('previewDetails').open,true);assert.equal(a.e.get('tollReviewAmount').hidden,toll==='0');
+    a.e.get('tollRoad').click();assert.equal(a.e.get('tollReview').open,false);assert.equal(a.e.get('previewDetails').open,true);
+    assert.equal(a.c.document.activeElement.id,'review');assert.equal(a.e.get('review').lastScroll.block,'start');
+    assert.equal(a.e.get('toll').value,toll);assert.equal(a.c.SHOT.toll.length,0);
+    a.e.get('previewDetails').open=false;a.e.get(id).click();assert.equal(a.e.get('tollReview').open,false);assert.equal(a.e.get('previewDetails').open,true);
+  }
+});
+test('recheck opens toll attachment directly; dismissing the warning never advances or remembers consent',()=>{
+  const a=app();valid(a);a.e.get('reviewgo').click();a.e.get('tollRecheck').click();
+  assert.equal(a.e.get('tollReview').open,false);assert.equal(a.e.get('ov').open,true);assert.equal(a.c.OVMODE,'toll');assert.equal(a.c.TOLL_REVIEW_ACK,null);
+  a.c.ovClose();a.e.get('reviewgo').click();a.e.get('tollReview').emit('cancel');
+  assert.equal(a.e.get('tollReview').open,false);assert.equal(a.c.TOLL_REVIEW_PENDING,null);assert.notEqual(a.e.get('previewDetails').open,true);
+  a.e.get('reviewgo').click();a.e.get('tollReviewClose').click();assert.equal(a.c.TOLL_REVIEW_ACK,null);
+});
+test('existing toll evidence skips the warning, but deletion and a different trip require a fresh decision',()=>{
+  const a=app();valid(a);a.c.SHOT.toll=[{use:{width:100,height:100}}];a.e.get('reviewgo').click();
+  assert.notEqual(a.e.get('tollReview').open,true);assert.equal(a.e.get('previewDetails').open,true);
+  a.c.SHOT.toll=[];a.e.get('reviewgo').click();assert.equal(a.e.get('tollReview').open,true);a.e.get('tollRoad').click();
+  a.e.get('to').value='새 도착지';a.e.get('to').emit('input');a.e.get('reviewgo').click();assert.equal(a.e.get('tollReview').open,true);a.e.get('tollRoad').click();
+  a.e.get('toll').value='5000';a.e.get('toll').emit('input');a.e.get('reviewgo').click();assert.equal(a.e.get('tollReview').open,true);
+  a.e.get('clr').click();assert.equal(a.e.get('tollReview').open,false);assert.equal(a.c.TOLL_REVIEW_ACK,null);assert.equal(a.c.TOLL_REVIEW_PENDING,null);
+});
+test('direct PDF and PNG actions share the toll check and preserve the original continuation',()=>{
+  const a=app();valid(a);let printed=0;a.c.window.open=()=>({document:{write(){printed++;},close(){}},focus(){}});
+  a.e.get('prt').click();assert.equal(a.e.get('tollReview').open,true);assert.equal(printed,0);
+  a.e.get('tollRoad').click();assert.equal(printed,1);a.e.get('prt').click();assert.equal(printed,2);
+  a.c.TOLL_REVIEW_ACK=null;a.e.get('png').click();assert.equal(a.e.get('tollReview').open,true);
+  a.e.get('tollReviewClose').click();assert.equal(a.c.TOLL_REVIEW_PENDING,null);
+});
 
 test('claim summary distinguishes missing inputs, paid expenses and actual evidence',()=>{
   const a=app();assert.equal(a.e.get('claimTotal').textContent,'—');assert.equal(a.e.get('err').textContent,'');

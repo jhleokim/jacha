@@ -20,6 +20,32 @@ export function routeDistance(snapshot,names){
   return km;
 }
 
+// Serialized into the disposable Kakao page by Puppeteer. State belongs to that
+// page, never to the Worker or another request. Any pan/zoom/new tile resets it.
+export function routeMapReady(stableMs=2000){
+  const map=document.getElementById('view.mapContainer');
+  const visible=el=>{
+    const r=el.getBoundingClientRect(),s=getComputedStyle(el);
+    return r.width>0&&r.height>0&&r.right>0&&r.bottom>0&&r.left<innerWidth&&r.top<innerHeight
+      &&s.display!=='none'&&s.visibility!=='hidden'&&Number(s.opacity)>0
+      &&(!el.checkVisibility||el.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}));
+  };
+  const distance=document.querySelector('.CarRouteSummaryView .distance');
+  const tiles=map?[...map.querySelectorAll('img')].filter(im=>im.src.includes('kakaocdn.net/')&&im.src.includes('/tile/')&&visible(im)):[];
+  const paths=map?[...map.querySelectorAll('svg path')].filter(p=>(p.getAttribute('d')||'').length>100&&visible(p)):[];
+  if(!distance||!visible(distance)||!/^\s*[\d,]+(?:\.\d+)?\s*(km|m)\s*$/.test(distance.innerText)
+      ||tiles.length<4||tiles.some(im=>!im.complete||im.naturalWidth<=0||im.naturalHeight<=0)||!paths.length){
+    window.__jachaRouteReady=null;return false;
+  }
+  const box=el=>{const r=el.getBoundingClientRect();return [r.x,r.y,r.width,r.height].map(v=>Math.round(v*10)/10);};
+  const signature=JSON.stringify({distance:distance.innerText,
+    tiles:tiles.map(im=>[im.currentSrc||im.src,...box(im)]).sort(),
+    paths:paths.map(p=>[p.getAttribute('d'),...box(p)])});
+  const last=window.__jachaRouteReady,now=performance.now();
+  if(!last||last.signature!==signature){window.__jachaRouteReady={signature,since:now};return false;}
+  return now-last.since>=stableMs;
+}
+
 export async function renderRoute(binding,q,launch){
   if(!launch)launch=(await import('@cloudflare/puppeteer')).default.launch;
   const browser=await launch(binding);
@@ -29,20 +55,21 @@ export async function renderRoute(binding,q,launch){
     await page.setViewport({width:1440,height:1000,deviceScaleFactor:1});
     page.setDefaultTimeout(20000);
     await page.goto(q.url,{waitUntil:'domcontentloaded',timeout:20000});
-    await page.waitForFunction(()=>{
-      const e=document.querySelector('.CarRouteSummaryView .distance');
-      const tiles=[...document.images].filter(im=>im.src.includes('kakaocdn.net/')&&im.src.includes('/tile/'));
-      return e&&e.getBoundingClientRect().height>0&&/\d/.test(e.innerText)
-        &&[...document.querySelectorAll('svg path')].some(p=>(p.getAttribute('d')||'').length>100)
-        &&tiles.length>=4&&tiles.every(im=>im.complete&&im.naturalWidth>0);
+    await page.evaluate(()=>document.fonts.ready);
+    await page.waitForFunction(routeMapReady,{polling:100,timeout:20000},2000);
+    await page.evaluate(async()=>{
+      const tiles=[...document.images].filter(im=>im.src.includes('kakaocdn.net/')&&im.src.includes('/tile/')&&im.complete&&im.naturalWidth>0);
+      await Promise.all(tiles.map(im=>im.decode()));
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     });
+    // Decode or a late layout update may have changed the visible tile set.
+    await page.waitForFunction(routeMapReady,{polling:100,timeout:10000},2000);
     if(new URL(page.url()).origin!=='https://map.kakao.com')throw new Error('route_unexpected_page');
     const snapshot=await page.evaluate(()=>({
       names:[...document.querySelectorAll('input[name^="routePoint-"]')].filter(e=>e.getBoundingClientRect().height>0).map(e=>e.value),
       distance:document.querySelector('.CarRouteSummaryView .distance').innerText
     }));
     const km=routeDistance(snapshot,q.names);
-    await page.evaluate(()=>document.fonts.ready);
     const png=await page.screenshot({type:'png'});
     return {png,km};
   }finally{clearTimeout(deadline);await browser.close().catch(()=>{});}
