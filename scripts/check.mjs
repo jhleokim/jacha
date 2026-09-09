@@ -2,6 +2,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { Script } from 'node:vm';
 import { execFileSync } from 'node:child_process';
 import {createHash} from 'node:crypto';
+const font=readFileSync('public/fonts/PretendardVariable.woff2');
+if(createHash('sha256').update(font).digest('hex')!=='9599f12fd42fc0bce1cd50b47a0c022e108d7aa64dd0d1bb0ed44f3282d900b4')throw new Error('Bundled Pretendard font is missing or altered');
 const ocrManifest=JSON.parse(readFileSync('public/vendor/ocr/manifest.json','utf8'));
 for(const [name,entry] of Object.entries(ocrManifest.files)){
   const data=readFileSync('public/vendor/ocr/'+name);

@@ -10,6 +10,6 @@ createServer(async(req,res)=>{
     if(path!==root&&!path.startsWith(root+sep))throw new Error('path');
     const file=path===root?resolve(root,'index.html'):path;
     const data=await readFile(file);
-    res.writeHead(200,{...headers,'Content-Type':({'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json','.png':'image/png','.gz':'application/octet-stream'})[extname(file)]||'application/octet-stream','Cache-Control':'no-store'});res.end(data);
+    res.writeHead(200,{...headers,'Content-Type':({'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.json':'application/json','.png':'image/png','.woff2':'font/woff2','.gz':'application/octet-stream'})[extname(file)]||'application/octet-stream','Cache-Control':'no-store'});res.end(data);
   }catch{res.writeHead(404,{'Content-Type':'application/json'});res.end('{}');}
-}).listen(8788,'127.0.0.1',()=>console.log('UI check: http://127.0.0.1:8788'));
+}).listen(Number(process.env.UI_PORT)||8787,'127.0.0.1',()=>console.log('UI check server is ready.'));

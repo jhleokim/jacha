@@ -21,6 +21,7 @@ function app(saved=new Map(),config){
     querySelector(){return this.input;}
     setAttribute(k,v){(this.attributes??={})[k]=v;} focus(){doc.activeElement=this;} scrollIntoView(){} showModal(){this.open=true;} close(){this.open=false;}
     getContext(){const owner=this;return {
+      measureText(text){return {width:Array.from(String(text)).reduce((n,c)=>n+(/[\u3000-\uffff]/.test(c)?1:.55),0)*(parseFloat(/([\d.]+)px/.exec(this.font||'16px')[1]))};},
       fillText(text,x,y){owner.texts.push({text:String(text),x,y,font:this.font});},
       fillRect(){},strokeRect(){},setTransform(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},drawImage(){}
     };}
@@ -29,6 +30,7 @@ function app(saved=new Map(),config){
     const e=new Element(match[1],match[3]);e.value=/\bvalue="([^"]*)"/.exec(match[2])?.[1]||'';
     e.type=/\btype="([^"]*)"/.exec(match[2])?.[1]||'';e.checked=/\bchecked\b/.test(match[2]);elements.set(e.id,e);
     e.className=/\bclass="([^"]*)"/.exec(match[2])?.[1]||'';
+    e.hidden=/\bhidden\b/.test(match[2]);
   }
   for(const k of ['name','dept','date','from','purp']){const p=new Element();p.input=new Element('input');pins.set(k,p);}
   elements.get('oil').value='휘발유';elements.get('rnd').value='floor';
@@ -44,6 +46,7 @@ function app(saved=new Map(),config){
     requestAnimationFrame:cb=>{frames.set(++seq,cb);return seq;},cancelAnimationFrame:id=>frames.delete(id),
     console,alert(){},crypto:globalThis.crypto,Uint8Array,URL,URLSearchParams,AbortController,Image:class{}});
   vm.runInContext(readFileSync('public/calculation.js','utf8'),context);
+  vm.runInContext(readFileSync('public/report.js','utf8'),context);
   for(const file of ['receipt-amount.js','receipt-reader.js','receipt-evidence.js'])vm.runInContext(readFileSync('public/'+file,'utf8'),context);
   for(const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))vm.runInContext(match[1],context);
   return {c:context,e:elements,pins,saved,timers,frames};
@@ -78,14 +81,14 @@ test('route cancel and immediate retry isolate old completion and fallback',asyn
     assert.notEqual(a.e.get('dtShot').open,true);
   }
 });
-test('cancelled address lookup cannot overwrite immediately retried candidates',async()=>{
+test('changed addresses cannot be overwritten by an earlier address response',async()=>{
   const a=app();a.e.get('to').value='도착';const jobs=[];
   a.c.searchPlaces=()=>new Promise(resolve=>jobs.push(resolve));a.c.경로웹캡처=async()=>({km:12,image:{}});
-  const first=a.c.경로자동조회();a.e.get('routecancel').click();const second=a.c.경로자동조회();
+  const first=a.c.주소확인();a.e.get('to').value='새 도착';a.e.get('to').emit('input');const second=a.c.주소확인();
   jobs[0]([{nm:'옛 출발',x:1,y:1}]);jobs[1]([{nm:'옛 도착',x:2,y:2}]);await first;
   assert.equal(a.c.ADDR.length,0);assert.equal(a.e.get('chkaddr').disabled,true);
   jobs[2]([{nm:'새 출발',x:127,y:37}]);jobs[3]([{nm:'새 도착',x:128,y:38}]);await second;
-  assert.equal(a.c.ADDR[0].pick.nm,'새 출발');assert.equal(a.e.get('km').value,'12');
+  assert.equal(a.c.ADDR[0].pick.nm,'새 출발');assert.equal(a.e.get('km').value,'');assert.equal(a.e.get('omaprow').hidden,false);
 });
 test('oil cancel and retry ignore older screenshot errors and preserve the new busy state',async()=>{
   const a=app();valid(a);a.e.get('date').value='2026-09-07';
@@ -291,10 +294,41 @@ test('transport failures do not retry seven different dates',async()=>{
   await assert.rejects(a.c.lookupOil가까운('2026-09-07','휘발유'),/503/);assert.equal(calls,1);
 });
 test('route keeps automatic and manual actions separate after address confirmation',()=>{
-  const a=app();assert.equal(a.e.get('chkaddr').className,'route-action');
+  const a=app();assert.equal(a.e.get('chkaddr').className,'p route-action');assert.equal(a.e.get('omaprow').hidden,true);
   assert.equal(a.e.get('omap').className,'p2 route-action');
   a.c.확정좌표=()=>[{x:127,y:37}];a.c.경로단계갱신(true);
   assert.equal(a.e.get('omap').className,'p2 route-action');assert.equal(a.e.get('chkaddr').className,'done route-action');
+  assert.equal(a.e.get('omaprow').hidden,false);
+});
+test('route actions appear only for all confirmed current addresses and disappear on edit or clear',async()=>{
+  const a=app();let calls=0;a.c.searchPlaces=async(raw)=>{calls++;return [{nm:raw,x:127,y:37}];};
+  await a.c.주소확인();assert.equal(calls,0);assert.equal(a.c.document.activeElement.id,'to');
+  a.e.get('to').value='서울역';await a.c.경로자동조회();assert.equal(calls,0);assert.equal(a.e.get('omaprow').hidden,true);
+  await a.c.주소확인();assert.equal(calls,2);assert.equal(a.e.get('omaprow').hidden,false);assert.equal(a.e.get('hint1').hidden,false);
+  a.e.get('to').value='용산역';a.e.get('to').emit('input');assert.equal(a.e.get('omaprow').hidden,true);assert.equal(a.e.get('hint1').hidden,true);
+  await a.c.주소확인();assert.equal(a.e.get('omaprow').hidden,false);
+  a.e.get('via').value='시청';a.e.get('via').emit('input');assert.equal(a.e.get('omaprow').hidden,true);
+  a.c.searchPlaces=async()=>[{nm:'후보1',x:1,y:1},{nm:'후보2',x:2,y:2}];await a.c.주소확인();assert.equal(a.e.get('omaprow').hidden,true);assert.equal(a.e.get('addressDetails').open,true);
+  a.c.ADDR.forEach(it=>it.pick=it.cands[0]);a.c.경로단계갱신(true);assert.equal(a.e.get('omaprow').hidden,false);
+  a.c.ADDR[0].pick=null;a.c.경로단계갱신(true);assert.equal(a.e.get('omaprow').hidden,true);
+  a.c.searchPlaces=async()=>{throw Error('offline');};await a.c.주소확인();assert.equal(a.e.get('mapfallback').hidden,false);assert.equal(a.e.get('omaprow').hidden,true);
+  a.e.get('clr').click();assert.equal(a.e.get('mapfallback').hidden,true);assert.equal(a.e.get('addressDetails').hidden,true);assert.equal(a.e.get('omaprow').hidden,true);
+});
+test('native report preserves escaped text, exact totals, provenance, selected photos and highlight coordinates',()=>{
+  const a=app();valid(a);a.e.get('name').value='<img src=x onerror=alert(1)>';a.e.get('purp').value='현장 검토 & 출장 보고';a.e.get('toll').value='9600';
+  a.c.SHOT.toll=[{use:{width:800,height:1400,src:'data:image/png;base64,TEST'},hl:[{x:20,y:50,w:300,h:40}],zoom:.6},{use:null}];
+  a.c.draw();const preview=a.e.get('reportPreview').innerHTML;
+  assert.match(preview,/&lt;img src=x onerror=alert\(1\)&gt;/);assert.doesNotMatch(preview,/<img src=x/);
+  assert.match(preview,/13,740 원/);assert.match(preview,/현장 검토 &amp; 출장 보고/);assert.match(preview,/viewBox="0 0 800 1400"/);assert.match(preview,/<rect x="20" y="50" width="300" height="40"/);assert.match(preview,/width:60%/);
+  let printed='';a.c.window.open=()=>({document:{write:s=>printed=s,close(){}},focus(){}});a.e.get('prt').click();
+  assert.match(printed,/<title>자차보조금정산_/);assert.match(printed,/report-costs/);assert.match(printed,/\/fonts.css/);assert.match(printed,/\/print.js/);assert.doesNotMatch(printed,/<canvas/);
+  assert.match(printed,/13,740 원/);assert.equal((printed.match(/class="report-sheet report-evidence"/g)||[]).length,1);
+});
+test('PNG layout wraps long Korean purpose and addresses without clipping its footer',()=>{
+  const a=app();valid(a);const purpose='협력사와 공동 현장 점검 및 설계 변경 사항 검토 '.repeat(8);a.e.get('purp').value=purpose;a.e.get('to').value='서울특별시 중구 세종대로 서울시청 별관 지하주차장 방문객 출입구 '.repeat(6);
+  a.c.FSCALE=1.3;a.c.draw();const cv=a.e.get('pv');assert.ok(cv.texts.every(t=>t.y<cv._h-16));
+  assert.ok(cv.texts.some(t=>t.text.includes('협력사와 공동')));assert.ok(cv.texts.filter(t=>t.text.includes('서울특별시')).length>=2);
+  assert.ok(cv.texts.filter(t=>/정산서|청구 합계/.test(t.text)).every(t=>/^(600|700) /.test(t.font)));
 });
 test('actual web screenshot is attached when available; conditions changed during capture discard it',async()=>{
   for(const change of [false,true]){
