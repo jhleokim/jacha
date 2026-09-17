@@ -1121,22 +1121,39 @@ function hidpi(cv,w,h){
 }
 
 /* ----- 1장: 텍스트 ----- */
+function reportNumber(n,min){return n.toLocaleString("ko-KR",{minimumFractionDigits:min||0,maximumFractionDigits:20});}
+function reportToll(s){
+  var receipts=SHOT.toll.filter(function(it){return it.use;}),info=ReceiptAmount.summary(receipts);
+  var proof={text:receipts.length?"증빙 첨부":"증빙 미첨부",key:"toll"};
+  var basis=[],note=[],source="통행료: 미청구";
+  if(s.toll===0){basis=["미청구"];if(receipts.length)note=[proof];}
+  else if(info.complete&&Number.isSafeInteger(info.total)&&info.total===s.toll){
+    receipts.forEach(function(it,i){if(i)basis.push(" + ");basis.push({text:KO(it.receipt.amount),key:"toll",index:i});});
+    basis.push(" 원");note=[proof];source="통행료: 영수증별 확인 금액 합계";
+  }else{
+    basis=[WON(s.toll)];note=["입력 금액 · ",proof];source="통행료: 입력 금액 (영수증·이용내역 기준)";
+    if(receipts.length)note.push(info.pending?" · 영수증 금액 확인 중":info.complete?" · 영수증 합계와 다름":" · 영수증별 금액 미확인");
+  }
+  if(s.toll>0&&!s.inc)note.push(" · 별도 청구 · 합계 제외");
+  return {label:"통행료",basis:basis,note:note,amount:WON(s.toll),source:source};
+}
 function reportModel(){
   var s=calc(),date=(OIL_OK&&OIL_OK.date)||$("date").value;
   var route=주소항목().map(function(r){return [r.tag,r.raw];});
-  var km={text:s.km.toFixed(1)+" km",key:"map"},price={text:KO(Math.round(s.pr))+" 원/L",key:"oil"};
-  var distance=RT_INFO?["왕복 · 편도 ",{text:RT_INFO.편도.toFixed(1)+" km",key:"map"}," × 2 · "]:[];
+  var km={text:reportNumber(s.km,1)+" km",key:"map"},price={text:reportNumber(s.pr)+" 원/L",key:"oil"};
+  var distance=RT_INFO?["왕복 · 편도 ",{text:reportNumber(RT_INFO.편도,1)+" km",key:"map"}," × 2 · "]:[];
   distance.push("총 ",km);
-  var costs=[{label:"자차보조금",basis:[km," · ",price],amount:s.err?"—":WON(s.sub)}];
+  var rounding={floor:"10원 절사",round:"10원 반올림",none:"원단위 반올림"}[s.mode]||"";
+  var costs=[{label:"자차보조금",basis:[km," ÷ "+reportNumber(s.fe)+" km/L × ",price," × "+reportNumber(s.rt)],note:[rounding],amount:s.err?"—":WON(s.sub)}];
   var tail=s.inc?"실비":"별도 청구 · 합계 제외";
-  costs.push({label:"통행료",basis:[{text:장수("toll")?"증빙 첨부":"증빙 미첨부",key:"toll"},s.inc?"":" · 별도 청구 · 합계 제외"],amount:WON(s.toll)});
+  var toll=reportToll(s);costs.push(toll);
   if(s.park)costs.push({label:"주차료",basis:[tail],amount:WON(s.park)});
   return {scale:FSCALE,date:$("date").value,name:$("name").value.trim(),dept:$("dept").value,purpose:$("purp").value,
     vehicle:"자가용 승용 · "+$("oil").value+" · 연비 "+s.fe+" km/L",route:route,
     distance:distance,
     formula:["적용 유가 ",price,(date?" ("+date+" 기준)":"")+" · 가산율 "+s.rt],
     costs:costs,totalLabel:s.inc?"청구 합계":"자차보조금",total:s.err?"—":WON(s.total),
-    sources:[SRC.route,SRC.toll,SRC.park,SRC.oil,
+    sources:[SRC.route,toll.source,SRC.park,SRC.oil,
       "공식: 주행거리 ÷ "+s.fe+" km/L × 전국평균유가 × "+s.rt+" (사내 여비규정)",
       "실제 지급액은 사내 여비규정 및 결재권자 승인에 따릅니다."],evidence:[]};
 }
@@ -1193,8 +1210,10 @@ function drawPage1(cv){
     y+=pt(5);rule(y);y+=pt(18);
     m.costs.forEach(function(r){
       T(r.label,M,y,PT.body);T(r.amount,PAGE_W-M,y,PT.body,500,null,"right");
-      var ls=lines(window.JachaReport.text(r.basis),W*.42,PT.label);ls.forEach(function(l,i){T(l,M+W*.25,y+i*pt(17),PT.label,400,"#52605a");});
-      y+=Math.max(1,ls.length)*pt(17)+pt(8);rule(y);y+=pt(18);
+      var ls=lines(window.JachaReport.text(r.basis),W*.48,PT.label);ls.forEach(function(l,i){T(l,M+W*.21,y+i*pt(17),PT.label,400,"#52605a");});
+      var height=Math.max(1,ls.length)*pt(17),note=window.JachaReport.text(r.note||[]);
+      if(note)lines(note,W*.48,PT.foot).forEach(function(l){T(l,M+W*.21,y+height,PT.foot,400,"#52605a");height+=pt(15);});
+      y+=height+pt(8);rule(y);y+=pt(18);
     });
     y+=pt(10);rule(y,"#263e32");y+=pt(34);
     T(m.totalLabel,M,y,PT.h2,600);T(m.total,PAGE_W-M,y,PT.total,700,null,"right");y+=pt(20);rule(y);
