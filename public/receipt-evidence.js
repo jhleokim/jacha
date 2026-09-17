@@ -35,7 +35,7 @@
       if(document.activeElement!==view.input)view.input.value=state.amount===null?'':String(state.amount);
       view.retry.disabled=state.pending;
     }
-    sync(k);
+    sync(k);root.scheduleDraw();
   }
   function start(k,it){
     if(!keys.includes(k))return;

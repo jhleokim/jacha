@@ -11,14 +11,14 @@
     // summaries. Never guess a physical PDF page number or link outside the file.
     var targets=Object.create(null);
     m.evidence.forEach(function(pg,i){
-      if(['map','oil','toll','park'].includes(pg.key)&&!targets[pg.key])targets[pg.key]={id:'report-evidence-'+(i+1),label:pg.label};
+      if(['map','oil','toll','park'].includes(pg.key))(targets[pg.key]||(targets[pg.key]=[])).push({id:'report-evidence-'+(i+1),label:pg.label});
     });
     function linked(value){
-      return parts(value).map(function(p){var target=targets[p.key];return target
+      return parts(value).map(function(p){var target=targets[p.key]&&targets[p.key][p.index==null?0:p.index];return target
         ?'<a class="report-link" href="#'+target.id+'" title="'+esc(target.label)+'로 이동">'+esc(p.text)+'</a>':esc(p.text);
       }).join('');
     }
-    var rows=m.costs.map(function(r){return '<tr><th scope="row">'+esc(r.label)+'</th><td>'+linked(r.basis)+'</td><td class="amount">'+esc(r.amount)+'</td></tr>';}).join('');
+    var rows=m.costs.map(function(r){return '<tr><th scope="row">'+esc(r.label)+'</th><td>'+linked(r.basis)+(text(r.note||[])?'<small class="report-cost-note">'+linked(r.note)+'</small>':'')+'</td><td class="amount">'+esc(r.amount)+'</td></tr>';}).join('');
     var summary='<article class="report-sheet report-main" id="report-summary" aria-label="자차보조금 정산서">'
       +'<header class="report-heading"><p>출장비 정산</p><h1>자차보조금 정산서</h1><div>출장일 '+esc(m.date||'—')+'</div></header>'
       +section('출장 정보','<dl class="report-facts">'+pair('출장자',m.name)+pair('부서',m.dept)+pair('출장목적',m.purpose)+pair('차량·유종',m.vehicle)+'</dl>')

@@ -17,8 +17,9 @@
 .report-costs{width:100%;border-collapse:collapse;table-layout:fixed;font-size:inherit}
 .report-costs th,.report-costs td{padding:8px 0;text-align:left;border-bottom:1px solid #e0e6e2;vertical-align:top;line-height:1.65;font-weight:400}
 .report-costs thead th{padding:7px 0;font-size:calc(9pt * var(--report-scale));font-weight:500;color:#58635d;border-top:1px solid #b9c8bf}
-.report-costs th:first-child{width:25%}.report-costs th:nth-child(2){width:46%}
+.report-costs th:first-child{width:21%}.report-costs th:nth-child(2){width:50%}
 .report-costs td:nth-child(2){font-size:calc(10pt * var(--report-scale));color:#52605a;padding-right:12px}
+.report-cost-note{display:block;margin-top:3px;font-size:calc(9pt * var(--report-scale));line-height:1.6;color:#52605a}
 .report-costs .amount{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .report-total{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:12px;margin:20px 0;padding:14px 0;border-top:2px solid #263e32;border-bottom:1px solid #cbd5ce;break-inside:avoid}
 .report-total span{font-weight:600;font-size:calc(12pt * var(--report-scale))}.report-total strong{font-weight:700;font-size:calc(23pt * var(--report-scale));line-height:1.3;letter-spacing:-.015em}
@@ -49,6 +50,8 @@
  .print-toolbar{display:none}
  .print-window .report-document{max-width:none;margin:0}
  .print-window .report-sheet{padding:0;margin:0;border:0;border-radius:0}
+ .report-heading{padding-bottom:14px;margin-bottom:14px}.report-section{margin-bottom:16px}
+ .report-total{margin:16px 0;padding:12px 0}
  .report-sheet+.report-sheet{break-before:page}
  .report-heading{break-inside:avoid}.report-document h2{break-after:avoid}
  .report-costs thead{display:table-header-group}.report-costs tr,.report-sources p{break-inside:avoid}

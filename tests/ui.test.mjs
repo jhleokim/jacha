@@ -365,20 +365,20 @@ test('report numbers and toll status link to the first matching evidence, with r
   assert.match(out,/href="#report-evidence-1"[^>]*>23\.0 km<\/a>/);
   assert.match(out,/href="#report-evidence-1"[^>]*>11\.5 km<\/a>/);
   assert.match(out,/href="#report-evidence-3"[^>]*>1,500 원\/L<\/a>/);
-  assert.match(out,/<th scope="row">통행료<\/th><td><a[^>]*href="#report-evidence-4"[^>]*>증빙 첨부<\/a>/);
+  assert.match(out,/<th scope="row">통행료<\/th><td>9,600 원<small class="report-cost-note">입력 금액 · <a[^>]*href="#report-evidence-4"[^>]*>증빙 첨부<\/a>/);
   assert.match(out,/16,740 원/);assert.doesNotMatch(out,/\[object Object\]/);
   assert.equal((out.match(/href="#report-summary"/g)||[]).length,6);
   const ids=new Set([...out.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]));
   for(const m of out.matchAll(/\bhref="#([^"]+)"/g))assert.ok(ids.has(m[1]),'missing destination: '+m[1]);
   assert.deepEqual(Array.from(a.c.reportEvidence(),pg=>pg.key),['map','map','oil','toll','toll','park']);
-  assert.ok(a.e.get('pv').texts.some(t=>t.text==='증빙 첨부'));
+  assert.ok(a.e.get('pv').texts.some(t=>t.text.includes('증빙 첨부')));
 });
 test('missing or removed evidence is plain text and never leaves a dangling PDF link',()=>{
   const a=app();valid(a);a.c.draw();let out=a.e.get('reportPreview').innerHTML;
-  assert.match(out,/<th scope="row">통행료<\/th><td>증빙 미첨부<\/td><td class="amount">0 원<\/td>/);
+  assert.match(out,/<th scope="row">통행료<\/th><td>미청구<\/td><td class="amount">0 원<\/td>/);
   assert.doesNotMatch(out,/href="#report-evidence-/);
   a.c.SHOT.toll=[{use:{width:800,height:600,src:'data:image/png;base64,TEST'},hl:[]}];a.e.get('toll').value='9600';a.e.get('inc').checked=false;a.c.draw();
-  out=a.e.get('reportPreview').innerHTML;assert.match(out,/href="#report-evidence-1"[^>]*>증빙 첨부<\/a> · 별도 청구 · 합계 제외/);assert.match(out,/4,140 원/);
+  out=a.e.get('reportPreview').innerHTML;assert.match(out,/href="#report-evidence-1"[^>]*>증빙 첨부<\/a> · 영수증별 금액 미확인 · 별도 청구 · 합계 제외/);assert.match(out,/4,140 원/);
   a.c.SHOT.toll=[];a.c.draw();out=a.e.get('reportPreview').innerHTML;
   assert.match(out,/증빙 미첨부 · 별도 청구 · 합계 제외/);assert.doesNotMatch(out,/href="#report-evidence-/);
   assert.ok(a.e.get('pv').texts.some(t=>t.text.includes('증빙 미첨부')));
@@ -391,8 +391,53 @@ test('print document uses internal destinations for long summaries and escapes l
   assert.match(printed,/href="#report-evidence-1" title="유가 &lt;증빙&gt; &quot;확인&quot;로 이동"/);
   assert.doesNotMatch(printed,/<a[^>]*href="https?:|#page=/);
   assert.match(printed,/id="report-summary"/);assert.match(printed,/id="report-evidence-1"/);
-  assert.match(printed,/증빙 미첨부/);assert.doesNotMatch(printed,/\[object Object\]/);
+  assert.match(printed,/미청구/);assert.doesNotMatch(printed,/\[object Object\]/);
 });
+test('allowance formula preserves every decimal operand and identifies the rounding applied to its result',()=>{
+  const a=app();valid(a);
+  for(const [k,v] of Object.entries({km:'23.45',price:'1652.48',fe:'12.5',rate:'1.25'}))a.e.get(k).value=v;
+  for(const [mode,label,amount] of [['floor','10원 절사','3,870 원'],['round','10원 반올림','3,880 원'],['none','원단위 반올림','3,875 원']]){
+    a.e.get('rnd').value=mode;a.c.draw();const out=a.e.get('reportPreview').innerHTML;
+    assert.match(out,/23\.45 km ÷ 12\.5 km\/L × 1,652\.48 원\/L × 1\.25/);
+    assert.ok(out.includes(label+'</small></td><td class="amount">'+amount));
+    assert.equal(a.c.reportModel().total,amount);
+    assert.ok(a.e.get('pv').texts.map(t=>t.text).join('').includes('23.45 km ÷ 12.5 km/L × 1,652.48 원/L × 1.25'));
+  }
+});
+test('verified toll components link to their own receipts and stay correct after removal or reordering',()=>{
+  const a=app();valid(a);const photo=amount=>({use:{width:800,height:600,src:'data:image/png;base64,TEST'},receipt:{amount,pending:false},hl:[]});
+  const first=photo(7300),second=photo(2000);a.c.SHOT.map=[photo()];a.c.SHOT.oil=[photo()];
+  a.c.SHOT.toll=[{use:null,receipt:{amount:9999}},first,second];a.e.get('toll').value='9300';a.c.draw();
+  let out=a.e.get('reportPreview').innerHTML;
+  assert.match(out,/href="#report-evidence-3"[^>]*>7,300<\/a> \+ <a[^>]*href="#report-evidence-4"[^>]*>2,000<\/a> 원/);
+  assert.equal(a.c.reportModel().total,'13,440 원');assert.doesNotMatch(out,/통행료: 실비/);
+  a.c.SHOT.toll=[second,first];a.e.get('inc').checked=false;a.c.draw();out=a.e.get('reportPreview').innerHTML;
+  assert.match(out,/href="#report-evidence-3"[^>]*>2,000<\/a> \+ <a[^>]*href="#report-evidence-4"[^>]*>7,300<\/a> 원/);
+  assert.match(out,/별도 청구 · 합계 제외/);assert.equal(a.c.reportModel().total,'4,140 원');
+  a.c.SHOT.toll=[second];a.e.get('toll').value='2000';a.c.draw();out=a.e.get('reportPreview').innerHTML;
+  assert.match(out,/href="#report-evidence-3"[^>]*>2,000<\/a> 원/);assert.doesNotMatch(out,/href="#report-evidence-4"/);
+  a.e.get('toll').value='0';a.c.draw();assert.match(a.e.get('reportPreview').innerHTML,/<th scope="row">통행료<\/th><td>미청구<small/);
+});
+test('unconfirmed or mismatching receipts never invent a toll breakdown or replace the claimed total',()=>{
+  const a=app();valid(a);a.e.get('toll').value='9300';
+  for(const [receipt,note] of [[undefined,'영수증별 금액 미확인'],[{amount:9300,pending:true},'영수증 금액 확인 중'],[{amount:8000,pending:false},'영수증 합계와 다름'],[{amount:-1},'영수증별 금액 미확인']]){
+    a.c.SHOT.toll=[{use:{width:800,height:600,src:'data:image/png;base64,TEST'},receipt,hl:[]}];a.c.draw();const out=a.e.get('reportPreview').innerHTML;
+    assert.match(out,/<th scope="row">통행료<\/th><td>9,300 원<small/);assert.ok(out.includes(note));
+    assert.equal(a.c.reportModel().total,'13,440 원');assert.doesNotMatch(out,/통행료: 실비/);
+  }
+});
+test('late receipt recognition refreshes the breakdown even when a manually entered total stays unchanged',async()=>{
+  const a=app();valid(a);a.e.get('toll').value='9300';a.e.get('toll').emit('input');const jobs=[];
+  a.c.ReceiptReader.recognize=()=>new Promise(resolve=>jobs.push(resolve));
+  for(let i=0;i<2;i++){const it={use:{width:800,height:600,src:'data:image/png;base64,TEST'},hl:[]};a.c.SHOT.toll.push(it);a.c.ReceiptEvidence.start('toll',it);}
+  a.c.draw();assert.match(a.e.get('reportPreview').innerHTML,/영수증 금액 확인 중/);
+  jobs[0]({amount:7300,reason:'확인'});jobs[1]({amount:2000,reason:'확인'});await Promise.resolve();await Promise.resolve();
+  for(const cb of [...a.frames.values()])cb();
+  assert.equal(a.e.get('toll').value,'9300');assert.equal(a.c.reportModel().total,'13,440 원');
+  assert.match(a.e.get('reportPreview').innerHTML,/>7,300<\/a> \+ <a[^>]*>2,000<\/a> 원/);
+  assert.ok(a.e.get('pv').texts.some(t=>t.text==='7,300 + 2,000 원'));
+});
+
 test('PNG layout wraps long Korean purpose and addresses without clipping its footer',()=>{
   const a=app();valid(a);const purpose='협력사와 공동 현장 점검 및 설계 변경 사항 검토 '.repeat(8);a.e.get('purp').value=purpose;a.e.get('to').value='서울특별시 중구 세종대로 서울시청 별관 지하주차장 방문객 출입구 '.repeat(6);
   a.c.FSCALE=1.3;a.c.draw();const cv=a.e.get('pv');assert.ok(cv.texts.every(t=>t.y<cv._h-16));
